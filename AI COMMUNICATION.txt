@@ -1,20 +1,16 @@
-implement user registration and sheet edition
-get tools and profile tab to be filled with values from sheets, hide based on user permission
-also we will have a selection based right click or tool function execution, i'm thiking about it.
-doing this we will validate all excel sheet links to build a universal sheet health checker
-we need to implement user item creation somehow for each module in the new module file in github
-(fix web frontent later)
+https://github.com/leokob4/5REV-SHEETS.git
 
-ui/tools/sheet_editor.py ok
-client/build_db.py
-[
-Option A: Auto-regenerate before app starts
-In gui.py entry point:
-python
-Copiar
-Editar
-import client.build_db as build_db
-build_db.build_combined_db()
-]
 
-re send gui.py complete
+
+ File "C:\Users\leona\OneDrive\Documentos\GitHub\5REV-SHEETS\client\gui.py", line 97, in authenticate
+    self.main = TeamcenterStyleGUI(user)
+                ~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\leona\OneDrive\Documentos\GitHub\5REV-SHEETS\client\gui.py", line 125, in __init__
+    self.tools = load_tools_from_excel()
+                 ~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\leona\OneDrive\Documentos\GitHub\5REV-SHEETS\client\gui.py", line 37, in load_tools_from_excel
+    sheet = wb["tools"]
+            ~~^^^^^^^^^
+  File "C:\Users\leona\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\openpyxl\workbook\workbook.py", line 287, in __getitem__
+    raise KeyError("Worksheet {0} does not exist.".format(key))
+KeyError: 'Worksheet tools does not exist.'
