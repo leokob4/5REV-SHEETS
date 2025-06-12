@@ -1,0 +1,14 @@
+project-root/
+┣ backend/
+┃ ┣ main.py
+┃ ┣ gui.py                   # ⬅️ PyQt5 GUI launcher
+┃ ┣ templates/
+┃ ┃ ┣ login.html
+┃ ┃ ┗ dashboard.html
+┣ app/
+┃ ┣ main.xlsx
+┃ ┣ users.xlsx
+┃ ┣ modules.xlsx
+┃ ┗ permissions.xlsx
+┣ folder_structure.txt
+┗ requirements.txt

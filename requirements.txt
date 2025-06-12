@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+python-jose
+bcrypt
+openpyxl
+python-multipart
+jinja2
+PyQt5

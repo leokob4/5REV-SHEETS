@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head><title>📦 Dashboard</title></head>
+<body>
+  <h1>Welcome {{ user.username }} (role: {{ user.role }})</h1>
+  <h2>Accessible Modules</h2>
+  <ul>
+    {% for mod in modules %}
+      <li><b>{{ mod.name }}</b>: {{ mod.description }}</li>
+    {% endfor %}
+  </ul>
+
+  {% if user.role == "admin" %}
+    <form method="post" action="/admin/reload">
+      <button type="submit">Reload Excel Sheets</button>
+    </form>
+  {% endif %}
+</body>
+</html>
