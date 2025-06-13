@@ -103,6 +103,39 @@
         .tab-close-btn:hover {
             color: #e53e3e; /* red */
         }
+
+        /* Modal styles */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+            width: 90%;
+            max-width: 600px;
+            max-height: 80%;
+            overflow-y: auto;
+            position: relative;
+        }
+        .modal-close-btn {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #6b7280;
+        }
     </style>
 </head>
 <body class="flex flex-col min-h-screen">
@@ -146,6 +179,13 @@
         <!-- Left Pane: Tree View -->
         <aside class="w-64 bg-white shadow-lg p-4 tree-view">
             <h2 class="text-lg font-semibold text-gray-800 mb-4">Workspace</h2>
+            <!-- Search Bar -->
+            <div class="mb-4 flex items-center">
+                <input type="text" id="itemSearchBar" placeholder="Search items..." class="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400">
+                <button id="searchItemsBtn" class="ml-2 p-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                </button>
+            </div>
             <div id="treeViewContent" class="space-y-1">
                 <!-- Tree items will be dynamically inserted here -->
                 <div class="tree-item parent flex items-center">
@@ -155,16 +195,16 @@
                     <span class="tree-item-icon">📂</span> Demo Project - Rev A
                 </div>
                 <div class="ml-8 tree-item flex items-center">
-                    <span class="tree-item-icon">📄</span> Part-001
+                    <span class="tree-item-icon" data-item-name="Part-001">📄</span> Part-001
                 </div>
                 <div class="ml-8 tree-item flex items-center">
-                    <span class="tree-item-icon">📦</span> Assembly-001
+                    <span class="tree-item-icon" data-item-name="Assembly-001">📦</span> Assembly-001
                 </div>
                 <div class="ml-4 tree-item flex items-center">
                     <span class="tree-item-icon">📂</span> Sample Variant - V1.0
                 </div>
                 <div class="ml-8 tree-item flex items-center">
-                    <span class="tree-item-icon">🧩</span> Component-XYZ
+                    <span class="tree-item-icon" data-item-name="Component-XYZ">🧩</span> Component-XYZ
                 </div>
             </div>
         </aside>
@@ -180,6 +220,17 @@
         </section>
     </main>
 
+    <!-- Search Results Modal -->
+    <div id="searchResultsModal" class="modal hidden">
+        <div class="modal-content">
+            <span class="modal-close-btn" id="closeModalBtn">&times;</span>
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">Search Results</h2>
+            <ul id="searchResultsList" class="space-y-2">
+                <!-- Search results will be dynamically inserted here -->
+            </ul>
+        </div>
+    </div>
+
     <script>
         const AUTH_TOKEN = localStorage.getItem('authToken');
         const profileUsernameEl = document.getElementById('profileUsername');
@@ -191,12 +242,29 @@
         const toolsMenu = document.getElementById('toolsMenu');
         const profileMenu = document.getElementById('profileMenu');
         const logoutBtn = document.getElementById('logoutBtn');
+        const itemSearchBar = document.getElementById('itemSearchBar');
+        const searchItemsBtn = document.getElementById('searchItemsBtn');
+        const searchResultsModal = document.getElementById('searchResultsModal');
+        const searchResultsList = document.getElementById('searchResultsList');
+        const closeModalBtn = document.getElementById('closeModalBtn');
 
         let allTools = {};
         let userRole = '';
         let userPermissions = {};
         let openTabs = new Map(); // Map to store open tabs: 'tabId' -> {title, contentElement}
         let activeTabId = null;
+
+        // Sample hardcoded workspace items for search (in a real app, this would come from a backend API)
+        const workspaceItems = [
+            "Demo Project - Rev A",
+            "Part-001",
+            "Assembly-001",
+            "Sample Variant - V1.0",
+            "Component-XYZ",
+            "Specification-005",
+            "Drawing-CAD-001"
+        ];
+
 
         // --- Utility Functions ---
         function showMessageBox(message, type = 'info') {
@@ -539,6 +607,50 @@
             // Add form submission logic here if needed, e.g., parentElement.querySelector('form').addEventListener('submit', ...)
         }
 
+        // --- Search Functionality ---
+        function handleItemSearch() {
+            const searchTerm = itemSearchBar.value.toLowerCase();
+            const results = workspaceItems.filter(item => item.toLowerCase().includes(searchTerm));
+            displaySearchResults(results);
+        }
+
+        function displaySearchResults(results) {
+            searchResultsList.innerHTML = ''; // Clear previous results
+            if (results.length === 0) {
+                const li = document.createElement('li');
+                li.className = 'p-2 text-gray-600';
+                li.textContent = 'No items found.';
+                searchResultsList.appendChild(li);
+            } else {
+                results.forEach(item => {
+                    const li = document.createElement('li');
+                    li.className = 'p-2 border-b border-gray-200 cursor-pointer hover:bg-gray-100 rounded-md';
+                    li.textContent = item;
+                    li.onclick = () => {
+                        openSelectedItem(item);
+                        searchResultsModal.classList.add('hidden'); // Hide modal after selection
+                    };
+                    searchResultsList.appendChild(li);
+                });
+            }
+            searchResultsModal.classList.remove('hidden'); // Show the modal
+        }
+
+        function openSelectedItem(itemName) {
+            // This is a placeholder. You would open a specific tab or view for the item.
+            openTab(`item-${itemName.replace(/\s+/g, '-')}`, `Details: ${itemName}`, (parentEl) => {
+                parentEl.innerHTML = `
+                    <div class="p-6">
+                        <h2 class="text-2xl font-bold text-gray-800 mb-4">Item Details: ${itemName}</h2>
+                        <p class="text-gray-700">Displaying details for "${itemName}". In a real application, this would load specific data for this item (e.g., properties, revisions, associated files).</p>
+                        <p class="mt-4 text-sm text-gray-500">You can add forms here to edit item properties, view history, etc.</p>
+                    </div>
+                `;
+            });
+            showMessageBox(`Opened details for: ${itemName}`, 'success');
+        }
+
+
         // --- Event Listeners and Initial Load ---
         toolsBtn.addEventListener('click', () => toolsMenu.classList.toggle('hidden'));
         profileBtn.addEventListener('click', () => profileMenu.classList.toggle('hidden'));
@@ -562,6 +674,17 @@
                 window.location.href = '/login'; // Redirect to login page
             }
         });
+
+        searchItemsBtn.addEventListener('click', handleItemSearch);
+        itemSearchBar.addEventListener('keyup', (e) => {
+            if (e.key === 'Enter') {
+                handleItemSearch();
+            }
+        });
+        closeModalBtn.addEventListener('click', () => {
+            searchResultsModal.classList.add('hidden');
+        });
+
 
         async function fetchInitialData() {
             if (!AUTH_TOKEN) {

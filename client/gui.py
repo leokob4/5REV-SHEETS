@@ -5,10 +5,12 @@ import openpyxl
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QToolBar, QAction, QTabWidget, QMenu, QToolButton,
     QWidget, QVBoxLayout, QSplitter, QTreeWidget, QTreeWidgetItem,
-    QLabel, QLineEdit, QPushButton, QHBoxLayout, QMessageBox, QGraphicsView, QGraphicsScene, QGraphicsRectItem, QGraphicsLineItem
+    QLabel, QLineEdit, QPushButton, QHBoxLayout, QMessageBox, QGraphicsView,
+    QGraphicsScene, QGraphicsRectItem, QGraphicsLineItem, QDialog, QListWidget, QListWidgetItem
 )
 from PyQt5.QtCore import Qt, QPointF
 from PyQt5.QtGui import QBrush, QPen, QColor
+
 
 # --- File Paths Configuration ---
 # Define standard paths for consistency.
@@ -20,6 +22,17 @@ TOOLS_EXCEL_PATH = os.path.join(APP_SHEETS_DIR, "tools.xlsx") # New path for too
 # Ensure directories exist
 os.makedirs(USER_SHEETS_DIR, exist_ok=True)
 os.makedirs(APP_SHEETS_DIR, exist_ok=True)
+
+# Sample hardcoded workspace items for search (in a real app, these would come from a backend/database)
+WORKSPACE_ITEMS = [
+    "Demo Project - Rev A",
+    "Part-001",
+    "Assembly-001",
+    "Sample Variant - V1.0",
+    "Component-XYZ",
+    "Specification-005",
+    "Drawing-CAD-001"
+]
 
 # === SHEET HELPERS ===
 def load_users_from_excel():
@@ -76,34 +89,41 @@ def load_tools_from_excel():
     Loads tool data from the dedicated tools Excel file.
     Corrected path to 'app_sheets/tools.xlsx' and added error handling.
     """
+    tools = {}
     try:
+        if not os.path.exists(TOOLS_EXCEL_PATH):
+            QMessageBox.critical(None, "File Not Found", f"Tools file not found at: {TOOLS_EXCEL_PATH}. Please ensure it exists.")
+            return {}
+
         wb = openpyxl.load_workbook(TOOLS_EXCEL_PATH)
         sheet = wb["tools"] # Corrected to read from 'tools' sheet
-        tools = {}
-        # Iterate from the second row to skip headers
+        
+        # Check if sheet has enough rows (at least header + one data row)
+        if sheet.max_row < 2:
+            QMessageBox.warning(None, "Empty Sheet", f"Sheet 'tools' in {TOOLS_EXCEL_PATH} appears to be empty or only contains headers.")
+            return {}
+
         for row in sheet.iter_rows(min_row=2):
             # Ensure enough cells are present to avoid IndexError
-            if len(row) >= 4:
+            if len(row) >= 4 and all(cell.value is not None for cell in row[:4]): # Ensure ID, Name, Desc, Path exist
                 tools[row[0].value] = {
                     "id": row[0].value,
                     "name": row[1].value,
                     "description": row[2].value,
                     "path": row[3].value
                 }
-        return tools
-    except FileNotFoundError:
-        QMessageBox.critical(None, "File Not Found", f"Tools file not found at: {TOOLS_EXCEL_PATH}. Please ensure it exists.")
-        return {}
     except KeyError:
         QMessageBox.critical(None, "Sheet Error", f"Sheet 'tools' not found in {TOOLS_EXCEL_PATH}. Please ensure the sheet name is 'tools'.")
         return {}
     except Exception as e:
         QMessageBox.critical(None, "Loading Error", f"Error loading tools: {e}")
         return {}
+    return tools
 
 
 def load_role_permissions():
     """Loads role permissions from the database Excel file."""
+    perms = {}
     try:
         wb = openpyxl.load_workbook(DB_EXCEL_PATH)
         sheet = wb["access"]
@@ -326,6 +346,8 @@ class TeamcenterStyleGUI(QMainWindow):
                 # We need to map tool IDs to actual widget classes or functions
                 if tool["id"] == "mod4": # Special handling for the new Engenharia tool
                     action.triggered.connect(lambda chk=False, title=tool["name"]: self._open_tab(title, EngenhariaWorkflowTool()))
+                elif tool["id"] == "mes_pcp": # Special handling for MES tool
+                    action.triggered.connect(lambda chk=False, title=tool["name"]: self._open_tab(title, self._create_mes_pcp_tool_widget()))
                 else:
                     action.triggered.connect(lambda chk=False, title=tool["name"], desc=tool["description"]: self._open_tab(title, QLabel(desc)))
         self.tools_btn.setMenu(tools_menu)
@@ -346,6 +368,11 @@ class TeamcenterStyleGUI(QMainWindow):
         """Creates the main split layout with tree view and tabs."""
         self.splitter = QSplitter() # Allows resizing of sub-widgets
 
+        # Left Pane Widget Container (to add search bar easily)
+        left_pane_widget = QWidget()
+        left_pane_layout = QVBoxLayout(left_pane_widget)
+        left_pane_layout.setContentsMargins(0, 0, 0, 0) # Remove margins for cleaner look
+
         # 🌳 Tree View (Left Pane)
         self.tree = QTreeWidget()
         self.tree.setHeaderLabel("Workspace")
@@ -353,6 +380,23 @@ class TeamcenterStyleGUI(QMainWindow):
         self.tree.expandAll() # Expand all tree items by default
         self.tree.setContextMenuPolicy(Qt.CustomContextMenu) # Enable custom context menu
         self.tree.customContextMenuRequested.connect(self._show_tree_context_menu)
+
+        # Search Bar
+        search_layout = QHBoxLayout()
+        self.item_search_bar = QLineEdit()
+        self.item_search_bar.setPlaceholderText("Search items...")
+        self.item_search_bar.returnPressed.connect(self.handle_item_search) # Connect Enter key
+        self.search_items_btn = QPushButton("🔍")
+        self.search_items_btn.clicked.connect(self.handle_item_search)
+
+        search_layout.addWidget(self.item_search_bar)
+        search_layout.addWidget(self.search_items_btn)
+
+        # Add search bar and tree to the left pane layout
+        left_pane_layout.addWidget(QLabel("Workspace")) # Label above search bar
+        left_pane_layout.addLayout(search_layout)
+        left_pane_layout.addWidget(self.tree)
+
 
         # 📑 Tabs (Right Pane)
         self.tabs = QTabWidget()
@@ -369,7 +413,7 @@ class TeamcenterStyleGUI(QMainWindow):
         self.tabs.addTab(welcome_widget, "Home")
 
         # Add widgets to the splitter
-        self.splitter.addWidget(self.tree)
+        self.splitter.addWidget(left_pane_widget) # Add the container widget to the splitter
         self.splitter.addWidget(self.tabs)
         self.splitter.setStretchFactor(1, 4) # Give more space to the tabs
 
@@ -393,6 +437,138 @@ class TeamcenterStyleGUI(QMainWindow):
         root.addChild(project2)
 
         self.tree.addTopLevelItem(root)
+
+    def _create_mes_pcp_tool_widget(self):
+        """Creates the widget for the MES (Apontamento Fábrica) tool."""
+        mes_widget = QWidget()
+        mes_layout = QVBoxLayout()
+        mes_layout.addWidget(QLabel("<h2>MES (Apontamento Fábrica)</h2>"))
+        mes_layout.addWidget(QLabel("Input production data, track progress, and manage shop floor operations."))
+
+        form_layout = QVBoxLayout()
+        self.order_id_input = QLineEdit()
+        self.order_id_input.setPlaceholderText("Production Order ID")
+        self.item_code_input = QLineEdit()
+        self.item_code_input.setPlaceholderText("Item Code")
+        self.quantity_input = QLineEdit()
+        self.quantity_input.setPlaceholderText("Quantity Produced")
+        # For simplicity, using QLineEdit. For actual datetime, consider QDateTimeEdit.
+        self.start_time_input = QLineEdit()
+        self.start_time_input.setPlaceholderText("Start Time (YYYY-MM-DD HH:MM)")
+        self.end_time_input = QLineEdit()
+        self.end_time_input.setPlaceholderText("End Time (YYYY-MM-DD HH:MM)")
+
+        submit_btn = QPushButton("Submit Production Data")
+        submit_btn.clicked.connect(self._submit_mes_data) # Connect to a submission handler
+
+        form_layout.addWidget(QLabel("Production Order ID:"))
+        form_layout.addWidget(self.order_id_input)
+        form_layout.addWidget(QLabel("Item Code:"))
+        form_layout.addWidget(self.item_code_input)
+        form_layout.addWidget(QLabel("Quantity Produced:"))
+        form_layout.addWidget(self.quantity_input)
+        form_layout.addWidget(QLabel("Start Time:"))
+        form_layout.addWidget(self.start_time_input)
+        form_layout.addWidget(QLabel("End Time:"))
+        form_layout.addWidget(self.end_time_input)
+        form_layout.addWidget(submit_btn)
+
+        mes_layout.addLayout(form_layout)
+        mes_layout.addStretch() # Push content to top
+        mes_widget.setLayout(mes_layout)
+        return mes_widget
+
+    def _submit_mes_data(self):
+        """Handles submission of MES data (placeholder)."""
+        order_id = self.order_id_input.text()
+        item_code = self.item_code_input.text()
+        quantity = self.quantity_input.text()
+        start_time = self.start_time_input.text()
+        end_time = self.end_time_input.text()
+
+        if not all([order_id, item_code, quantity, start_time, end_time]):
+            QMessageBox.warning(self, "Input Error", "All MES fields must be filled.")
+            return
+
+        # In a real application, you would save this data to a database or file
+        QMessageBox.information(self, "MES Data Submitted",
+                                f"Production Data Submitted:\n"
+                                f"Order ID: {order_id}\n"
+                                f"Item Code: {item_code}\n"
+                                f"Quantity: {quantity}\n"
+                                f"Start: {start_time}\n"
+                                f"End: {end_time}")
+        # Clear fields after submission
+        self.order_id_input.clear()
+        self.item_code_input.clear()
+        self.quantity_input.clear()
+        self.start_time_input.clear()
+        self.end_time_input.clear()
+
+    def handle_item_search(self):
+        """
+        Performs a search on workspace items and displays results in a dialog.
+        """
+        search_term = self.item_search_bar.text().strip().lower()
+        if not search_term:
+            QMessageBox.information(self, "Search", "Please enter a search term.")
+            return
+
+        results = [item for item in WORKSPACE_ITEMS if search_term in item.lower()]
+        self.display_search_results_dialog(results)
+
+    def display_search_results_dialog(self, results):
+        """
+        Displays search results in a new QDialog window.
+        """
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Search Results")
+        dialog.setGeometry(self.x() + 200, self.y() + 100, 400, 300) # Position relative to main window
+
+        layout = QVBoxLayout(dialog)
+        
+        if not results:
+            layout.addWidget(QLabel("No items found matching your search."))
+        else:
+            list_widget = QListWidget()
+            for item in results:
+                list_widget.addItem(item)
+            list_widget.itemDoubleClicked.connect(
+                lambda item: self.open_selected_item_tab(item.text()) or dialog.accept()
+            ) # Close dialog on double click
+            layout.addWidget(list_widget)
+
+        close_btn = QPushButton("Close")
+        close_btn.clicked.connect(dialog.accept) # Close dialog on button click
+        layout.addWidget(close_btn)
+
+        dialog.exec_() # Show dialog modally
+
+    def open_selected_item_tab(self, item_name):
+        """
+        Opens a new tab in the main GUI to display details of the selected item.
+        """
+        tab_id = f"item-details-{item_name.replace(' ', '-')}"
+        tab_title = f"Details: {item_name}"
+
+        # Check if tab is already open
+        for i in range(self.tabs.count()):
+            if self.tabs.tabText(i) == tab_title:
+                self.tabs.setCurrentIndex(i)
+                QMessageBox.information(self, "Info", f"Tab for '{item_name}' is already open.")
+                return
+
+        # Create a widget for item details
+        item_details_widget = QWidget()
+        item_details_layout = QVBoxLayout()
+        item_details_layout.addWidget(QLabel(f"<h2>Item Details: {item_name}</h2>"))
+        item_details_layout.addWidget(QLabel(f"Displaying comprehensive details for <b>{item_name}</b>."))
+        item_details_layout.addWidget(QLabel("This section would load real data: properties, revisions, associated files, etc."))
+        item_details_layout.addStretch() # Push content to top
+        item_details_widget.setLayout(item_details_layout)
+
+        self._open_tab(tab_title, item_details_widget)
+        QMessageBox.information(self, "Opened Item", f"Opened details for: {item_name}")
 
 
     def _open_tab(self, title, widget_instance):
