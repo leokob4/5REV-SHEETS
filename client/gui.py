@@ -33,7 +33,7 @@ def register_user(username, password, role="user"):
     wb.save("user_sheets/db.xlsx")
 
 def load_tools_from_excel():
-    wb = openpyxl.load_workbook("user_sheets/db.xlsx")
+    wb = openpyxl.load_workbook("user_sheets/db.xlsx")##change to app_sheets logic
     sheet = wb["tools"]
     tools = {}
     for row in sheet.iter_rows(min_row=2):
