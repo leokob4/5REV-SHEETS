@@ -9,7 +9,7 @@ from PyQt5.QtWidgets import (
     QGraphicsScene, QGraphicsRectItem, QGraphicsLineItem, QDialog, QListWidget, QListWidgetItem, QTableWidget, QTableWidgetItem, QHeaderView
 )
 from PyQt5.QtCore import Qt, QPointF
-from PyQt5.QtGui import QBrush, QPen, QColor # QColor is correctly imported here
+from PyQt5.QtGui import QBrush, QPen, QColor
 
 # --- Fix for ModuleNotFoundError: No module named 'ui' ---
 # Get the absolute path of the directory containing gui.py
@@ -190,9 +190,14 @@ class LoginWindow(QWidget):
 
         self.username_input = QLineEdit()
         self.username_input.setPlaceholderText("Nome de Usuário")
+        # Connect returnPressed to authenticate
+        self.username_input.returnPressed.connect(self.authenticate)
+        
         self.password_input = QLineEdit()
         self.password_input.setPlaceholderText("Senha")
         self.password_input.setEchoMode(QLineEdit.Password)
+        # Connect returnPressed to authenticate
+        self.password_input.returnPressed.connect(self.authenticate)
 
         login_btn = QPushButton("Entrar")
         login_btn.clicked.connect(self.authenticate)
@@ -326,6 +331,37 @@ class EngenhariaWorkflowTool(QWidget):
         QMessageBox.information(self, "Diagrama Limpo", "O diagrama foi limpo.")
 
 
+# === NEW TOOL: User Settings ===
+class UserSettingsTool(QWidget):
+    """
+    A widget to display user profile and personal information in read-only mode.
+    """
+    def __init__(self, username, role):
+        super().__init__()
+        self.setWindowTitle("Configurações do Usuário")
+        self.layout = QVBoxLayout(self)
+
+        self.layout.addWidget(QLabel("<h2>Informações do Perfil</h2>"))
+
+        # Username (read-only)
+        username_layout = QHBoxLayout()
+        username_layout.addWidget(QLabel("Nome de Usuário:"))
+        self.username_display = QLineEdit(username)
+        self.username_display.setReadOnly(True)
+        username_layout.addWidget(self.username_display)
+        self.layout.addLayout(username_layout)
+
+        # Role (read-only)
+        role_layout = QHBoxLayout()
+        role_layout.addWidget(QLabel("Cargo/Função:"))
+        self.role_display = QLineEdit(role)
+        self.role_display.setReadOnly(True)
+        role_layout.addWidget(self.role_display)
+        self.layout.addLayout(role_layout)
+
+        # Add some stretch to push content to the top
+        self.layout.addStretch()
+
 # === MAIN GUI ===
 class TeamcenterStyleGUI(QMainWindow):
     """
@@ -404,7 +440,8 @@ class TeamcenterStyleGUI(QMainWindow):
         self.profile_btn.setText(f"👤 {self.username}") # Display username in profile button
         self.profile_btn.setPopupMode(QToolButton.InstantPopup)
         profile_menu = QMenu()
-        profile_menu.addAction("⚙️ Configurações", self._open_options)
+        # Connect "⚙️ Configurações" to open the new UserSettingsTool
+        profile_menu.addAction("⚙️ Configurações", lambda: self._open_tab("Configurações do Usuário", UserSettingsTool(self.username, self.role)))
         profile_menu.addSeparator() # Add a separator for better visual grouping
         profile_menu.addAction("🔒 Sair", self._logout)
         self.profile_btn.setMenu(profile_menu)
@@ -631,7 +668,8 @@ class TeamcenterStyleGUI(QMainWindow):
 
     def _open_options(self):
         """Opens the user options/settings dialog."""
-        QMessageBox.information(self, "Opções", "As configurações do usuário serão gerenciadas aqui. (Recurso em desenvolvimento)")
+        # Use the already defined UserSettingsTool
+        self._open_tab("Configurações do Usuário", UserSettingsTool(self.username, self.role))
 
     def _logout(self):
         """Logs out the current user and returns to the login screen."""

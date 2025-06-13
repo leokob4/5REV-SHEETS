@@ -2,3 +2,6 @@ update requirements file
 add keyboard enter key support to login screen
 adicionar tela de configuracoes no qmenu ⚙️ Configurações, colocar read only de perfil e informacoes pessoais como role perfil nessa mesma tela
 ajustar as "tools" .py da pasta ui/tools para utlizar os dados das primeiras linhas das planilhas criadas por mim, ler nome da página das planilhas e primeira linha.
+
+
+import sys was missing again in some files, i already corrected this.

@@ -1,12 +1,11 @@
 import os
 import openpyxl
 import sys
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QPushButton, QTableWidget, QTableWidgetItem, QHBoxLayout, QMessageBox, QHeaderView
+from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QPushButton, QTableWidget, QTableWidgetItem, QHBoxLayout, QMessageBox, QHeaderView, QLineEdit, QLabel
 from PyQt5.QtCore import Qt
 
 # Define the path to the Excel file for this module
 DATA_EXCEL_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'user_sheets', 'colaboradores.xlsx')
-SHEET_NAME = "employees" # Name of the sheet within colaboradores.xlsx
 
 class ColaboradoresTool(QWidget):
     """
@@ -17,6 +16,18 @@ class ColaboradoresTool(QWidget):
         super().__init__()
         self.setWindowTitle("Gerenciador de Colaboradores")
         self.layout = QVBoxLayout(self)
+
+        # Sheet name input and load button
+        sheet_control_layout = QHBoxLayout()
+        sheet_control_layout.addWidget(QLabel("Nome da Planilha:"))
+        self.sheet_name_input = QLineEdit("employees") # Default sheet name
+        self.sheet_name_input.setPlaceholderText("Nome da Planilha")
+        sheet_control_layout.addWidget(self.sheet_name_input)
+
+        self.load_sheet_btn = QPushButton("Carregar Planilha")
+        self.load_sheet_btn.clicked.connect(self._load_data)
+        sheet_control_layout.addWidget(self.load_sheet_btn)
+        self.layout.addLayout(sheet_control_layout)
 
         self.table = QTableWidget()
         self.table.setEditTriggers(QTableWidget.DoubleClicked | QTableWidget.AnyKeyPressed)
@@ -41,19 +52,24 @@ class ColaboradoresTool(QWidget):
 
     def _load_data(self):
         """Loads data from the Excel sheet into the QTableWidget."""
+        current_sheet_name = self.sheet_name_input.text().strip()
+        if not current_sheet_name:
+            QMessageBox.warning(self, "Nome da Planilha Inválido", "O nome da planilha não pode estar vazio.")
+            return
+
         try:
             if not os.path.exists(DATA_EXCEL_PATH):
                 QMessageBox.warning(self, "Arquivo Não Encontrado", f"O arquivo de colaboradores não foi encontrado: {DATA_EXCEL_PATH}. Criando um novo.")
-                self._create_new_excel_file()
+                self._create_new_excel_file(current_sheet_name)
                 return
 
             wb = openpyxl.load_workbook(DATA_EXCEL_PATH)
-            if SHEET_NAME not in wb.sheetnames:
-                QMessageBox.warning(self, "Planilha Não Encontrada", f"A planilha '{SHEET_NAME}' não foi encontrada em '{DATA_EXCEL_PATH}'. Criando uma nova.")
-                self._create_new_excel_sheet(wb)
+            if current_sheet_name not in wb.sheetnames:
+                QMessageBox.warning(self, "Planilha Não Encontrada", f"A planilha '{current_sheet_name}' não foi encontrada em '{DATA_EXCEL_PATH}'. Criando uma nova.")
+                self._create_new_excel_sheet(wb, current_sheet_name)
                 return
 
-            sheet = wb[SHEET_NAME]
+            sheet = wb[current_sheet_name]
             headers = [cell.value for cell in sheet[1]]
             self.table.setColumnCount(len(headers))
             self.table.setHorizontalHeaderLabels(headers)
@@ -69,7 +85,7 @@ class ColaboradoresTool(QWidget):
                     self.table.setItem(row_idx, col_idx, item)
 
             self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-            QMessageBox.information(self, "Dados Carregados", f"Dados de '{SHEET_NAME}' carregados com sucesso.")
+            QMessageBox.information(self, "Dados Carregados", f"Dados de '{current_sheet_name}' carregados com sucesso.")
 
         except Exception as e:
             QMessageBox.critical(self, "Erro de Carregamento", f"Erro ao carregar dados de colaboradores: {e}")
@@ -78,15 +94,20 @@ class ColaboradoresTool(QWidget):
 
     def _save_data(self):
         """Saves data from the QTableWidget back to the Excel sheet."""
+        current_sheet_name = self.sheet_name_input.text().strip()
+        if not current_sheet_name:
+            QMessageBox.warning(self, "Nome da Planilha Inválido", "O nome da planilha não pode estar vazio.")
+            return
+
         try:
             if not os.path.exists(DATA_EXCEL_PATH):
-                self._create_new_excel_file()
+                self._create_new_excel_file(current_sheet_name)
 
             wb = openpyxl.load_workbook(DATA_EXCEL_PATH)
-            if SHEET_NAME not in wb.sheetnames:
-                self._create_new_excel_sheet(wb)
+            if current_sheet_name not in wb.sheetnames:
+                self._create_new_excel_sheet(wb, current_sheet_name)
 
-            sheet = wb[SHEET_NAME]
+            sheet = wb[current_sheet_name]
             for row_idx in range(sheet.max_row, 1, -1):
                 sheet.delete_rows(row_idx)
 
@@ -107,7 +128,7 @@ class ColaboradoresTool(QWidget):
                 sheet.append(row_data)
 
             wb.save(DATA_EXCEL_PATH)
-            QMessageBox.information(self, "Dados Salvos", f"Dados de '{SHEET_NAME}' salvos com sucesso em '{DATA_EXCEL_PATH}'.")
+            QMessageBox.information(self, "Dados Salvos", f"Dados de '{current_sheet_name}' salvos com sucesso em '{DATA_EXCEL_PATH}'.")
         except Exception as e:
             QMessageBox.critical(self, "Erro ao Salvar", f"Erro ao salvar dados de colaboradores: {e}")
 
@@ -118,29 +139,29 @@ class ColaboradoresTool(QWidget):
         for col_idx in range(self.table.columnCount()):
             self.table.setItem(row_count, col_idx, QTableWidgetItem(""))
 
-    def _create_new_excel_file(self):
+    def _create_new_excel_file(self, sheet_name):
         """Creates a new Excel workbook with the specified sheet and headers."""
         wb = openpyxl.Workbook()
         ws = wb.active
-        ws.title = SHEET_NAME
+        ws.title = sheet_name
         headers = ["ID Colaborador", "Nome", "Cargo", "Departamento", "Email"]
         ws.append(headers)
         wb.save(DATA_EXCEL_PATH)
         self.table.setColumnCount(len(headers))
         self.table.setHorizontalHeaderLabels(headers)
         self.table.setRowCount(0)
-        QMessageBox.information(self, "Arquivo Criado", f"Novo arquivo '{DATA_EXCEL_PATH}' com planilha '{SHEET_NAME}' criado.")
+        QMessageBox.information(self, "Arquivo Criado", f"Novo arquivo '{DATA_EXCEL_PATH}' com planilha '{sheet_name}' criado.")
 
-    def _create_new_excel_sheet(self, wb):
+    def _create_new_excel_sheet(self, wb, sheet_name):
         """Creates a new sheet within an existing workbook."""
-        ws = wb.create_sheet(SHEET_NAME)
+        ws = wb.create_sheet(sheet_name)
         headers = ["ID Colaborador", "Nome", "Cargo", "Departamento", "Email"]
         ws.append(headers)
         wb.save(DATA_EXCEL_PATH)
         self.table.setColumnCount(len(headers))
         self.table.setHorizontalHeaderLabels(headers)
         self.table.setRowCount(0)
-        QMessageBox.information(self, "Planilha Criada", f"Nova planilha '{SHEET_NAME}' criada em '{DATA_EXCEL_PATH}'.")
+        QMessageBox.information(self, "Planilha Criada", f"Nova planilha '{sheet_name}' criada em '{DATA_EXCEL_PATH}'.")
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
