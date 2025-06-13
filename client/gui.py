@@ -6,10 +6,10 @@ from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QToolBar, QAction, QTabWidget, QMenu, QToolButton,
     QWidget, QVBoxLayout, QSplitter, QTreeWidget, QTreeWidgetItem,
     QLabel, QLineEdit, QPushButton, QHBoxLayout, QMessageBox, QGraphicsView,
-    QGraphicsScene, QGraphicsRectItem, QGraphicsLineItem, QDialog, QListWidget, QListWidgetItem, QTableWidget, QTableWidgetItem, QHeaderView
+    QGraphicsScene, QGraphicsRectItem, QGraphicsLineItem, QDialog, QListWidget, QListWidgetItem, QTableWidget, QTableWidgetItem, QHeaderView, QComboBox
 )
 from PyQt5.QtCore import Qt, QPointF
-from PyQt5.QtGui import QBrush, QPen, QColor
+from PyQt5.QtGui import QBrush, QPen, QColor, QFont # Import QFont for EngenhariaWorkflowTool (even if not explicitly used here directly)
 
 # --- Fix for ModuleNotFoundError: No module named 'ui' ---
 # Get the absolute path of the directory containing gui.py
@@ -33,29 +33,24 @@ from ui.tools.estoque import EstoqueTool
 from ui.tools.financeiro import FinanceiroTool
 from ui.tools.pedidos import PedidosTool
 from ui.tools.manutencao import ManutencaoTool
+from ui.tools.structure_view_tool import StructureViewTool # New tool for structure view
+from ui.tools.user_settings_tool import UserSettingsTool # Make UserSettingsTool a separate importable module
+from ui.tools.engenharia_workflow_tool import EngenhariaWorkflowTool # New import for refactored tool
+
+# Import the new AddItemDialog
+from client.add_item_dialog import AddItemDialog
 
 # --- File Paths Configuration ---
 # Define standard paths for consistency.
-# These paths are now relative to the project root, which is in sys.path
 USER_SHEETS_DIR = os.path.join(project_root, "user_sheets")
 APP_SHEETS_DIR = os.path.join(project_root, "app_sheets")
 DB_EXCEL_PATH = os.path.join(USER_SHEETS_DIR, "db.xlsx")
-TOOLS_EXCEL_PATH = os.path.join(APP_SHEETS_DIR, "tools.xlsx") # New path for tools.xlsx
+TOOLS_EXCEL_PATH = os.path.join(APP_SHEETS_DIR, "tools.xlsx")
+WORKSPACE_EXCEL_PATH = os.path.join(USER_SHEETS_DIR, "workspace_data.xlsx") # New path for workspace data
 
 # Ensure directories exist
 os.makedirs(USER_SHEETS_DIR, exist_ok=True)
 os.makedirs(APP_SHEETS_DIR, exist_ok=True)
-
-# Sample hardcoded workspace items for search (in a real app, these would come from a backend/database)
-WORKSPACE_ITEMS = [
-    "Demo Project - Rev A",
-    "Part-001",
-    "Assembly-001",
-    "Sample Variant - V1.0",
-    "Component-XYZ",
-    "Specification-005",
-    "Drawing-CAD-001"
-]
 
 # === SHEET HELPERS ===
 def load_users_from_excel():
@@ -169,6 +164,94 @@ def load_role_permissions():
         QMessageBox.critical(None, "Erro de Carregamento", f"Erro ao carregar permissões: {e}")
         return {}
 
+def load_workspace_items_from_excel():
+    """Loads workspace items from workspace_data.xlsx, creating it if necessary."""
+    items = []
+    try:
+        if not os.path.exists(WORKSPACE_EXCEL_PATH):
+            # Create the file and sheet with default data
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "items"
+            ws.append(["ID", "Name", "Type", "ParentID", "Description"])
+            ws.append(["PROJ-001", "Demo Project - Rev A", "Project", "ROOT", "Main project for demonstration"])
+            ws.append(["PART-001", "Part-001", "Part", "PROJ-001", "A manufactured part"])
+            ws.append(["ASSY-001", "Assembly-001", "Assembly", "PROJ-001", "An assembly of multiple parts"])
+            ws.append(["COMP-001", "Component-XYZ", "Component", "ASSY-001", "A standard component"])
+            ws.append(["VAR-001", "Sample Variant - V1.0", "Variant", "ROOT", "A product variant"])
+            ws.append(["DRAW-001", "Drawing-CAD-001", "Document", "PART-001", "CAD drawing for Part-001"])
+            
+            # Create structure sheet
+            ws_structure = wb.create_sheet("structure")
+            ws_structure.append(["ParentID", "ComponentID", "ComponentName", "Quantity", "Unit", "Type"])
+            ws_structure.append(["ASSY-001", "PART-001", "Part-001", 2, "PCS", "Part"])
+            ws_structure.append(["ASSY-001", "COMP-001", "Component-XYZ", 1, "PCS", "Component"])
+            ws_structure.append(["PROJ-001", "ASSY-001", "Assembly-001", 1, "EA", "Assembly"])
+            ws_structure.append(["PROJ-001", "DRAW-001", "Drawing-CAD-001", 1, "EA", "Document"])
+            ws_structure.append(["VAR-001", "PART-001", "Part-001", 1, "PCS", "Part"])
+            ws_structure.append(["VAR-001", "DRAW-001", "Drawing-CAD-001", 1, "EA", "Document"])
+
+            wb.save(WORKSPACE_EXCEL_PATH)
+            QMessageBox.information(None, "Arquivo de Workspace Criado", f"O arquivo '{WORKSPACE_EXCEL_PATH}' foi criado com dados de exemplo.")
+        
+        wb = openpyxl.load_workbook(WORKSPACE_EXCEL_PATH)
+        if "items" not in wb.sheetnames:
+            QMessageBox.warning(None, "Planilha 'items' Não Encontrada", f"A planilha 'items' não foi encontrada em '{WORKSPACE_EXCEL_PATH}'. Criando uma nova.")
+            ws = wb.create_sheet("items")
+            ws.append(["ID", "Name", "Type", "ParentID", "Description"])
+            wb.save(WORKSPACE_EXCEL_PATH)
+
+        sheet = wb["items"]
+        headers = [cell.value for cell in sheet[1]] # Get headers
+        
+        # Map header names to column indices for robust access
+        header_map = {header: idx for idx, header in enumerate(headers)}
+        
+        for row_idx in range(2, sheet.max_row + 1): # Start from row 2 for data
+            row_values = [cell.value for cell in sheet[row_idx]]
+            item_data = {}
+            for col_name, col_idx in header_map.items():
+                item_data[col_name] = row_values[col_idx] if col_idx < len(row_values) else None
+            items.append(item_data)
+            
+    except Exception as e:
+        QMessageBox.critical(None, "Erro ao Carregar Itens do Workspace", f"Erro: {e}")
+    return items
+
+def add_workspace_item_to_excel(item_data):
+    """Adds a new item to the 'items' sheet in workspace_data.xlsx."""
+    try:
+        wb = openpyxl.load_workbook(WORKSPACE_EXCEL_PATH)
+        sheet = wb["items"]
+
+        # Check for duplicate ID
+        for row in sheet.iter_rows(min_row=2):
+            if row[0].value == item_data["ID"]:
+                QMessageBox.warning(None, "ID Duplicado", f"Um item com o ID '{item_data['ID']}' já existe. Por favor, use um ID único.")
+                return False
+
+        # Append the new item data
+        # Ensure the order matches the headers: "ID", "Name", "Type", "ParentID", "Description"
+        sheet.append([
+            item_data.get("ID"),
+            item_data.get("Name"),
+            item_data.get("Type"),
+            item_data.get("ParentID"),
+            item_data.get("Description")
+        ])
+        wb.save(WORKSPACE_EXCEL_PATH)
+        QMessageBox.information(None, "Item Adicionado", f"Item '{item_data['Name']}' adicionado com sucesso ao Espaço de Trabalho.")
+        return True
+    except FileNotFoundError:
+        QMessageBox.critical(None, "Arquivo Não Encontrado", f"O arquivo '{WORKSPACE_EXCEL_PATH}' não foi encontrado.")
+        return False
+    except KeyError:
+        QMessageBox.critical(None, "Erro de Planilha", f"A planilha 'items' não foi encontrada em '{WORKSPACE_EXCEL_PATH}'.")
+        return False
+    except Exception as e:
+        QMessageBox.critical(None, "Erro ao Adicionar Item", f"Erro ao adicionar item ao workspace: {e}")
+        return False
+
 
 # === LOGIN WINDOW ===
 class LoginWindow(QWidget):
@@ -256,112 +339,6 @@ class LoginWindow(QWidget):
         except Exception as e:
             QMessageBox.critical(self, "Erro", f"Ocorreu um erro durante o registro: {e}")
 
-# === NEW TOOL: ENGENHARIA WORKFLOW DIAGRAM ===
-class EngenhariaWorkflowTool(QWidget):
-    """
-    A placeholder widget for the Engenharia Workflow Diagram tool.
-    Provides a basic QGraphicsView for diagramming.
-    """
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle("Engenharia (Workflow) Tool")
-        self.layout = QVBoxLayout()
-        self.setLayout(self.layout)
-
-        self.scene = QGraphicsScene()
-        self.view = QGraphicsView(self.scene)
-        self.layout.addWidget(self.view)
-
-        self._add_sample_diagram_elements()
-
-        # Add control buttons
-        control_layout = QHBoxLayout()
-        add_node_btn = QPushButton("Adicionar Nó de Tarefa")
-        add_node_btn.clicked.connect(self._add_task_node)
-        add_link_btn = QPushButton("Adicionar Ligação de Dependência")
-        add_link_btn.clicked.connect(self._add_dependency_link)
-        clear_btn = QPushButton("Limpar Diagrama")
-        clear_btn.clicked.connect(self._clear_diagram)
-
-        control_layout.addWidget(add_node_btn)
-        control_layout.addWidget(add_link_btn)
-        control_layout.addWidget(clear_btn)
-        self.layout.addLayout(control_layout)
-
-        self.nodes = [] # To keep track of added nodes
-
-    def _add_sample_diagram_elements(self):
-        """Adds some sample elements to the diagram scene."""
-        # Task nodes - CORRECTED COLOR USAGE
-        node1 = self.scene.addRect(50, 50, 100, 50, QPen(Qt.black), QBrush(QColor("lightblue")))
-        node2 = self.scene.addRect(200, 150, 100, 50, QPen(Qt.black), QBrush(QColor("lightgreen")))
-        node3 = self.scene.addRect(350, 50, 100, 50, QPen(Qt.black), QBrush(QColor("lightcoral")))
-
-        self.scene.addText("Fase de Design", QPointF(55, 65))
-        self.scene.addText("Revisão (Aprovado)", QPointF(205, 165))
-        self.scene.addText("Preparação da Produção", QPointF(355, 65))
-
-        # Links/Arrows
-        pen = QPen(Qt.darkGray)
-        pen.setWidth(2)
-        self.scene.addLine(node1.x() + node1.rect().width(), node1.y() + node1.rect().height() / 2,
-                           node2.x(), node2.y() + node2.rect().height() / 2, pen)
-        self.scene.addLine(node2.x() + node2.rect().width(), node2.y() + node2.rect().height() / 2,
-                           node3.x(), node3.y() + node3.rect().height() / 2, pen)
-
-    def _add_task_node(self):
-        """Adds a new generic task node to the diagram."""
-        x = 10 + len(self.nodes) * 120 # Offset for new nodes
-        y = 10 + (len(self.nodes) % 3) * 70
-        node = self.scene.addRect(x, y, 100, 50, QPen(Qt.black), QBrush(QColor("#FFD700"))) # Gold color
-        self.scene.addText(f"Nova Tarefa {len(self.nodes) + 1}", QPointF(x + 5, y + 15))
-        self.nodes.append(node)
-        self.view.centerOn(node)
-
-    def _add_dependency_link(self):
-        """Prompts user to select two nodes to link. (Conceptual, requires selection logic)."""
-        QMessageBox.information(self, "Adicionar Ligação", "Clique em dois nós de tarefa para criar uma ligação. (Lógica de seleção a ser implementada)")
-        # In a real implementation, you'd need selection mechanisms (e.g., click listeners on QGraphicsRectItem)
-        # to get two nodes and then draw a QGraphicsLineItem between their centroids or edges.
-
-    def _clear_diagram(self):
-        """Clears all elements from the diagram."""
-        self.scene.clear()
-        self.nodes = [] # Reset nodes list
-        QMessageBox.information(self, "Diagrama Limpo", "O diagrama foi limpo.")
-
-
-# === NEW TOOL: User Settings ===
-class UserSettingsTool(QWidget):
-    """
-    A widget to display user profile and personal information in read-only mode.
-    """
-    def __init__(self, username, role):
-        super().__init__()
-        self.setWindowTitle("Configurações do Usuário")
-        self.layout = QVBoxLayout(self)
-
-        self.layout.addWidget(QLabel("<h2>Informações do Perfil</h2>"))
-
-        # Username (read-only)
-        username_layout = QHBoxLayout()
-        username_layout.addWidget(QLabel("Nome de Usuário:"))
-        self.username_display = QLineEdit(username)
-        self.username_display.setReadOnly(True)
-        username_layout.addWidget(self.username_display)
-        self.layout.addLayout(username_layout)
-
-        # Role (read-only)
-        role_layout = QHBoxLayout()
-        role_layout.addWidget(QLabel("Cargo/Função:"))
-        self.role_display = QLineEdit(role)
-        self.role_display.setReadOnly(True)
-        role_layout.addWidget(self.role_display)
-        self.layout.addLayout(role_layout)
-
-        # Add some stretch to push content to the top
-        self.layout.addStretch()
-
 # === MAIN GUI ===
 class TeamcenterStyleGUI(QMainWindow):
     """
@@ -377,6 +354,8 @@ class TeamcenterStyleGUI(QMainWindow):
         self.role = user["role"]
         self.tools = load_tools_from_excel() # Load tools using the updated function
         self.permissions = load_role_permissions()
+        # Initial load of workspace data; will be reloaded on tree population
+        self.workspace_items_data = [] 
 
         self._create_toolbar()
         self._create_main_layout()
@@ -459,10 +438,13 @@ class TeamcenterStyleGUI(QMainWindow):
         # 🌳 Tree View (Left Pane)
         self.tree = QTreeWidget()
         self.tree.setHeaderLabel("Espaço de Trabalho")
-        self._populate_sample_tree() # Populate with sample data
+        self._populate_workspace_tree() # Populate with data from Excel
         self.tree.expandAll() # Expand all tree items by default
         self.tree.setContextMenuPolicy(Qt.CustomContextMenu) # Enable custom context menu
         self.tree.customContextMenuRequested.connect(self._show_tree_context_menu)
+        # Connect double-click to open structure view
+        self.tree.itemDoubleClicked.connect(self._open_structure_view_for_item)
+
 
         # Search Bar
         search_layout = QHBoxLayout()
@@ -507,17 +489,91 @@ class TeamcenterStyleGUI(QMainWindow):
         container.setLayout(layout)
         self.setCentralWidget(container)
 
-    def _populate_sample_tree(self):
-        """Populates the tree with sample project/variant data."""
-        root = QTreeWidgetItem(["Projetos"])
-        project1 = QTreeWidgetItem(["Projeto Demo - Rev A"])
-        project1.addChild(QTreeWidgetItem(["Peça-001"]))
-        project1.addChild(QTreeWidgetItem(["Montagem-001"]))
-        self.tree.addTopLevelItem(root)
+    def _populate_workspace_tree(self):
+        """Populates the tree with data loaded from workspace_data.xlsx."""
+        self.tree.clear() # Clear existing items
+        self.workspace_items_data = load_workspace_items_from_excel() # Reload data
 
-        project2 = QTreeWidgetItem(["Variante Amostra - V1.0"])
-        project2.addChild(QTreeWidgetItem(["Componente-XYZ"]))
-        self.tree.addTopLevelItem(project2) # Added directly to root for testing different structures
+        # Build a dictionary for quick lookup of items by ID and to store children
+        item_map = {item['ID']: {'data': item, 'children': []} for item in self.workspace_items_data}
+        
+        # Create root items (those with 'ROOT' as ParentID) and establish hierarchy
+        root_items = []
+        for item_id, item_info in item_map.items():
+            parent_id = item_info['data'].get('ParentID') # Use .get() for safety
+            if parent_id == 'ROOT':
+                root_items.append(item_info['data'])
+            elif parent_id in item_map:
+                item_map[parent_id]['children'].append(item_info['data'])
+
+        # Recursive function to add items to the tree
+        def add_items_to_tree(parent_qtree_item, items_list):
+            for item_data in items_list:
+                icon_map = {
+                    "Project": "📁", "Assembly": "📦", "Part": "📄",
+                    "Component": "🧩", "Document": "📜", "Variant": "💡"
+                }
+                icon = icon_map.get(item_data.get('Type', ''), '❓') # Default icon
+                
+                # Store the full item data directly in the QTreeWidgetItem
+                q_item = QTreeWidgetItem([f"{icon} {item_data.get('Name', 'N/A')}"])
+                q_item.setData(0, Qt.UserRole, item_data.get('ID')) # Store ID for later lookup
+                q_item.setData(1, Qt.UserRole, item_data.get('Name')) # Store Name for easier retrieval
+                q_item.setData(2, Qt.UserRole, item_data.get('Type')) # Store Type
+                q_item.setData(3, Qt.UserRole, item_data.get('ParentID')) # Store ParentID
+                q_item.setData(4, Qt.UserRole, item_data.get('Description')) # Store Description
+                
+                parent_qtree_item.addChild(q_item)
+                
+                # Recursively add children
+                if item_data.get('ID') in item_map and item_map[item_data['ID']]['children']:
+                    add_items_to_tree(q_item, item_map[item_data['ID']]['children'])
+
+        # Add root items
+        for item_data in root_items:
+            icon_map = {
+                "Project": "📁", "Assembly": "📦", "Part": "📄",
+                "Component": "🧩", "Document": "📜", "Variant": "💡"
+            }
+            icon = icon_map.get(item_data.get('Type', ''), '❓')
+            
+            root_q_item = QTreeWidgetItem([f"{icon} {item_data.get('Name', 'N/A')}"])
+            root_q_item.setData(0, Qt.UserRole, item_data.get('ID'))
+            root_q_item.setData(1, Qt.UserRole, item_data.get('Name'))
+            root_q_item.setData(2, Qt.UserRole, item_data.get('Type'))
+            root_q_item.setData(3, Qt.UserRole, item_data.get('ParentID'))
+            root_q_item.setData(4, Qt.UserRole, item_data.get('Description'))
+            self.tree.addTopLevelItem(root_q_item)
+
+            if item_data.get('ID') in item_map and item_map[item_data['ID']]['children']:
+                add_items_to_tree(root_q_item, item_map[item_data['ID']]['children'])
+        
+        self.tree.expandAll() # Expand all nodes by default for visibility
+
+
+    def _open_structure_view_for_item(self, item, column):
+        """
+        Opens a new tab with the StructureViewTool for the double-clicked item.
+        """
+        item_id = item.data(0, Qt.UserRole) # Retrieve the stored ID
+        if not item_id:
+            QMessageBox.warning(self, "Erro", "Não foi possível obter o ID do item para visualização da estrutura.")
+            return
+
+        item_name = item.text(0).split(' ', 1)[1].strip() # Get the name from the display text
+
+        tab_title = f"Estrutura: {item_name}"
+        # Check if tab is already open
+        for i in range(self.tabs.count()):
+            if self.tabs.tabText(i) == tab_title:
+                self.tabs.setCurrentIndex(i)
+                QMessageBox.information(self, "Informação", f"A guia para a estrutura de '{item_name}' já está aberta.")
+                return
+
+        # Create and open the StructureViewTool in a new tab
+        structure_tool = StructureViewTool(item_id, item_name)
+        self._open_tab(tab_title, structure_tool)
+
 
     def _create_mes_pcp_tool_widget(self):
         """Creates the widget for the MES (Apontamento Fábrica) tool."""
@@ -596,7 +652,8 @@ class TeamcenterStyleGUI(QMainWindow):
             QMessageBox.information(self, "Pesquisar", "Por favor, digite um termo de pesquisa.")
             return
 
-        results = [item for item in WORKSPACE_ITEMS if search_term in item.lower()]
+        # Filter self.workspace_items_data
+        results = [item for item in self.workspace_items_data if search_term in item.get('Name', '').lower() or search_term in item.get('ID', '').lower()]
         self.display_search_results_dialog(results)
 
     def display_search_results_dialog(self, results):
@@ -614,10 +671,17 @@ class TeamcenterStyleGUI(QMainWindow):
         else:
             list_widget = QListWidget()
             for item in results:
-                list_widget.addItem(item)
+                # Display Name (ID) for clarity
+                list_item_text = f"{item.get('Name', 'N/A')} ({item.get('ID', 'N/A')})"
+                list_item = QListWidgetItem(list_item_text)
+                list_item.setData(Qt.UserRole, item.get('ID')) # Store ID in UserRole
+                list_item.setData(Qt.UserRole + 1, item.get('Name')) # Store Name for easier retrieval
+                list_widget.addItem(list_item)
+
             list_widget.itemDoubleClicked.connect(
-                lambda item: self.open_selected_item_tab(item.text()) or dialog.accept()
-            ) # Close dialog on double click
+                # Use the ID and Name from the stored data to open structure view
+                lambda item_list_widget: self._open_structure_view_for_item_by_data(item_list_widget.data(Qt.UserRole), item_list_widget.data(Qt.UserRole + 1)) or dialog.accept()
+            ) 
             layout.addWidget(list_widget)
 
         close_btn = QPushButton("Fechar")
@@ -626,32 +690,43 @@ class TeamcenterStyleGUI(QMainWindow):
 
         dialog.exec_() # Show dialog modally
 
-    def open_selected_item_tab(self, item_name):
-        """
-        Opens a new tab in the main GUI to display details of the selected item.
-        """
-        tab_id = f"item-details-{item_name.replace(' ', '-')}"
-        tab_title = f"Detalhes: {item_name}"
-
-        # Check if tab is already open
+    def _open_structure_view_for_item_by_data(self, item_id, item_name):
+        """Helper to open structure view directly from ID and Name."""
+        tab_title = f"Estrutura: {item_name}"
         for i in range(self.tabs.count()):
             if self.tabs.tabText(i) == tab_title:
                 self.tabs.setCurrentIndex(i)
-                QMessageBox.information(self, "Informação", f"A guia para '{item_name}' já está aberta.")
+                QMessageBox.information(self, "Informação", f"A guia para a estrutura de '{item_name}' já está aberta.")
                 return
 
-        # Create a widget for item details
-        item_details_widget = QWidget()
-        item_details_layout = QVBoxLayout()
-        item_details_layout.addWidget(QLabel(f"<h2>Detalhes do Item: {item_name}</h2>"))
-        item_details_layout.addWidget(QLabel(f"Exibindo detalhes abrangentes para <b>{item_name}</b>."))
-        item_details_layout.addWidget(QLabel("Esta seção carregaria dados reais: propriedades, revisões, arquivos associados, etc."))
-        item_details_layout.addStretch() # Push content to top
-        item_details_widget.setLayout(item_details_layout)
+        structure_tool = StructureViewTool(item_id, item_name)
+        self._open_tab(tab_title, structure_tool)
 
-        self._open_tab(tab_title, item_details_widget)
-        QMessageBox.information(self, "Item Aberto", f"Detalhes abertos para: {item_name}")
 
+    def find_qtree_item_by_id(self, item_id):
+        """
+        Helper to find a QTreeWidgetItem by its stored ID (Qt.UserRole).
+        Performs a recursive search through the tree.
+        """
+        def search_item(parent_item, target_id):
+            for i in range(parent_item.childCount()):
+                child_item = parent_item.child(i)
+                if child_item.data(0, Qt.UserRole) == target_id:
+                    return child_item
+                found_in_children = search_item(child_item, target_id)
+                if found_in_children:
+                    return found_in_children
+            return None
+
+        # Start search from top-level items
+        for i in range(self.tree.topLevelItemCount()):
+            top_item = self.tree.topLevelItem(i)
+            if top_item.data(0, Qt.UserRole) == item_id:
+                return top_item
+            found = search_item(top_item, item_id)
+            if found:
+                return found
+        return None
 
     def _open_tab(self, title, widget_instance):
         """
@@ -683,20 +758,47 @@ class TeamcenterStyleGUI(QMainWindow):
     def _show_tree_context_menu(self, pos):
         """Displays a context menu for items in the tree view."""
         item = self.tree.itemAt(pos)
-        if not item: return
-
+        
         menu = QMenu()
-        # Actions for root items (e.g., "Projetos")
-        if item.parent() is None:
-            menu.addAction("🔁 Atualizar Projeto", lambda: QMessageBox.information(self, "Ação Similada", "Projeto atualizado (ação simulada)"))
-            menu.addAction("➕ Adicionar Novo Item", lambda: QMessageBox.information(self, "Ação Similada", "Adicionar novo item (ação simulada)"))
-        # Actions for child items (e.g., "Projeto Demo", "Peça-001")
-        else:
-            menu.addAction("🔍 Ver Detalhes", lambda: QMessageBox.information(self, "Ação Similada", f"Visualizando detalhes para: {item.text(0)} (ação simulada)"))
-            menu.addAction("✏️ Editar Propriedades", lambda: QMessageBox.information(self, "Ação Similada", f"Editando propriedades para: {item.text(0)} (ação simulada)"))
-            menu.addAction("❌ Excluir Item", lambda: QMessageBox.warning(self, "Ação Similada", f"Excluído: {item.text(0)} (ação simulada)"))
+
+        # Action to add a new top-level item (e.g., a new project or variant)
+        # This will appear regardless of whether an item is selected or not
+        add_root_item_action = menu.addAction("➕ Adicionar Novo Item Raiz")
+        add_root_item_action.triggered.connect(self._add_new_root_item)
+
+        if item: # If an item was clicked
+            item_id = item.data(0, Qt.UserRole)
+            item_name = item.data(1, Qt.UserRole) or item.text(0).split(' ', 1)[1].strip() # Fallback to text if name not set
+
+            menu.addSeparator() # Separator for item-specific actions
+            
+            # Context actions for any clicked item
+            menu.addAction("🔍 Ver Detalhes/Estrutura", lambda: self._open_structure_view_for_item(item, 0))
+            menu.addAction("✏️ Editar Propriedades (Simulado)", lambda: QMessageBox.information(self, "Ação Similada", f"Editando propriedades para: {item_name} (ação simulada)"))
+            menu.addAction("❌ Excluir Item (Simulado)", lambda: QMessageBox.warning(self, "Ação Similada", f"Excluindo: {item_name} (ação simulada)"))
+            
+            # Action to add a subitem, specific to the clicked item
+            add_subitem_action = menu.addAction("➕ Adicionar Subitem")
+            add_subitem_action.triggered.connect(lambda: self._add_new_subitem(item_id, item_name))
 
         menu.exec_(self.tree.viewport().mapToGlobal(pos)) # Show menu at mouse position
+
+    def _add_new_root_item(self):
+        """Opens a dialog to add a new top-level item to the workspace."""
+        dialog = AddItemDialog(parent_id="ROOT", parent_name="ROOT", parent=self)
+        if dialog.exec_() == QDialog.Accepted:
+            item_data = dialog.item_data
+            if add_workspace_item_to_excel(item_data):
+                self._populate_workspace_tree() # Refresh tree after adding
+    
+    def _add_new_subitem(self, parent_id, parent_name):
+        """Opens a dialog to add a new subitem to a selected parent in the workspace."""
+        dialog = AddItemDialog(parent_id=parent_id, parent_name=parent_name, parent=self)
+        if dialog.exec_() == QDialog.Accepted:
+            item_data = dialog.item_data
+            if add_workspace_item_to_excel(item_data):
+                self._populate_workspace_tree() # Refresh tree after adding
+
 
     def _show_tab_context_menu(self, pos):
         """Displays a context menu for tabs in the tab widget."""

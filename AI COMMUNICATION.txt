@@ -1,7 +1,14 @@
-update requirements file
-add keyboard enter key support to login screen
-adicionar tela de configuracoes no qmenu ⚙️ Configurações, colocar read only de perfil e informacoes pessoais como role perfil nessa mesma tela
-ajustar as "tools" .py da pasta ui/tools para utlizar os dados das primeiras linhas das planilhas criadas por mim, ler nome da página das planilhas e primeira linha.
-
-
-import sys was missing again in some files, i already corrected this.
+implementar dropdown na seleção de páginas das planilhas nas tools que tem que olhar todas as páginas já criadas possíveis deixando o usuário selecionar.
+implementar adição de novos itens que pede os parâmetros das planilhas e filtra entrada para texo
+adicionar ações ao botão direito do mouse pertinentes de cada tool
+Traceback (most recent call last):
+  File "C:\Users\leona\OneDrive\Documentos\GitHub\5REV-SHEETS\client\gui.py", line 444, in <lambda>
+    action.triggered.connect(lambda chk=False, title=tool["name"]: self._open_tab(title, EngenhariaWorkflowTool()))
+                                                                                         ~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\leona\OneDrive\Documentos\GitHub\5REV-SHEETS\client\gui.py", line 311, in __init__
+    self._add_sample_diagram_elements()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\leona\OneDrive\Documentos\GitHub\5REV-SHEETS\client\gui.py", line 336, in _add_sample_diagram_elements
+    self.scene.addText("Fase de Design", QPointF(55, 65))
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: addText(self, text: Optional[str], font: QFont = QFont()): argument 2 has unexpected type 'QPointF'
