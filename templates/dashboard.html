@@ -1,19 +1,126 @@
 <!DOCTYPE html>
-<html>
-<head><title>📦 Dashboard</title></head>
-<body>
-  <h1>Welcome {{ user.username }} (role: {{ user.role }})</h1>
-  <h2>Accessible Modules</h2>
-  <ul>
-    {% for mod in modules %}
-      <li><b>{{ mod.name }}</b>: {{ mod.description }}</li>
-    {% endfor %}
-  </ul>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>5revolution Login</title>
+    <!-- Tailwind CSS CDN for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Inter font for consistent typography -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6; /* Light gray background */
+        }
+        .login-card {
+            min-width: 320px;
+            max-width: 400px;
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen">
+    <div class="login-card w-full p-8 bg-white shadow-xl rounded-xl">
+        <h1 class="text-3xl font-bold text-gray-800 mb-6 text-center">Login to 5revolution</h1>
 
-  {% if user.role == "admin" %}
-    <form method="post" action="/admin/reload">
-      <button type="submit">Reload Excel Sheets</button>
-    </form>
-  {% endif %}
+        <div id="messageBox" class="hidden mb-4 p-3 rounded-lg text-sm text-center"></div>
+
+        <form id="loginForm">
+            <div class="mb-4">
+                <label for="username" class="block text-gray-700 text-sm font-semibold mb-2">Username:</label>
+                <input type="text" id="username" name="username" class="shadow-sm appearance-none border rounded-lg w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Enter your username" required>
+            </div>
+            <div class="mb-6">
+                <label for="password" class="block text-gray-700 text-sm font-semibold mb-2">Password:</label>
+                <input type="password" id="password" name="password" class="shadow-sm appearance-none border rounded-lg w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Enter your password" required>
+            </div>
+            <div class="flex flex-col space-y-4">
+                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg focus:outline-none focus:shadow-outline transition-colors duration-200 shadow-md">
+                    Login
+                </button>
+                <button type="button" id="registerButton" class="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg focus:outline-none focus:shadow-outline transition-colors duration-200 shadow-md">
+                    Register
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        const messageBox = document.getElementById('messageBox');
+        const loginForm = document.getElementById('loginForm');
+        const registerButton = document.getElementById('registerButton');
+
+        function showMessage(message, type = 'info') {
+            messageBox.textContent = message;
+            messageBox.classList.remove('hidden', 'bg-red-100', 'text-red-700', 'bg-green-100', 'text-green-700', 'bg-blue-100', 'text-blue-700');
+            if (type === 'error') {
+                messageBox.classList.add('bg-red-100', 'text-red-700');
+            } else if (type === 'success') {
+                messageBox.classList.add('bg-green-100', 'text-green-700');
+            } else { // info
+                messageBox.classList.add('bg-blue-100', 'text-blue-700');
+            }
+            messageBox.classList.remove('hidden');
+        }
+
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            // In a real application, you would send this to your backend
+            // For this example, we'll simulate a successful login.
+            if (username === "testuser" && password === "password") {
+                localStorage.setItem('authToken', 'fake-jwt-token-123'); // Store a dummy token
+                showMessage('Login successful! Redirecting...', 'success');
+                setTimeout(() => {
+                    window.location.href = 'dashboard.html'; // Redirect to dashboard
+                }, 1500);
+            } else {
+                showMessage('Invalid username or password.', 'error');
+            }
+
+            // Example of a fetch request to a hypothetical backend endpoint:
+            /*
+            try {
+                const response = await fetch('/api/login', { // Replace with your actual backend login endpoint
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ username, password }),
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    localStorage.setItem('authToken', data.token); // Store the actual token
+                    showMessage('Login successful! Redirecting...', 'success');
+                    setTimeout(() => {
+                        window.location.href = 'dashboard.html';
+                    }, 1500);
+                } else {
+                    showMessage(data.message || 'Login failed. Please try again.', 'error');
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                showMessage('An error occurred during login. Please try again later.', 'error');
+            }
+            */
+        });
+
+        registerButton.addEventListener('click', () => {
+            // For now, this just shows a message.
+            // In a real app, you'd navigate to a registration page or open a registration modal.
+            showMessage('Registration functionality is not yet implemented in the web version. Please register via the desktop app.', 'info');
+            // Alternatively, you could implement client-side registration here,
+            // similar to the login fetch example, sending data to a /api/register endpoint.
+        });
+
+        // Automatically redirect to dashboard if already authenticated
+        if (localStorage.getItem('authToken')) {
+            window.location.href = 'dashboard.html';
+        }
+    </script>
 </body>
 </html>
