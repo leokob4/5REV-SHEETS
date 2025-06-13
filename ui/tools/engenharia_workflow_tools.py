@@ -5,8 +5,8 @@ from PyQt5.QtGui import QBrush, QPen, QColor, QFont # Import QFont
 
 class EngenhariaWorkflowTool(QWidget):
     """
-    A placeholder widget for the Engenharia Workflow Diagram tool.
-    Provides a basic QGraphicsView for diagramming.
+    Um widget placeholder para a ferramenta de Diagrama de Fluxo de Trabalho de Engenharia.
+    Fornece uma QGraphicsView básica para diagramação.
     """
     def __init__(self):
         super().__init__()
@@ -20,7 +20,7 @@ class EngenhariaWorkflowTool(QWidget):
 
         self._add_sample_diagram_elements()
 
-        # Add control buttons
+        # Botões de controle
         control_layout = QHBoxLayout()
         add_node_btn = QPushButton("Adicionar Nó de Tarefa")
         add_node_btn.clicked.connect(self._add_task_node)
@@ -34,16 +34,16 @@ class EngenhariaWorkflowTool(QWidget):
         control_layout.addWidget(clear_btn)
         self.layout.addLayout(control_layout)
 
-        self.nodes = [] # To keep track of added nodes
+        self.nodes = [] # Para rastrear os nós adicionados
 
     def _add_sample_diagram_elements(self):
-        """Adds some sample elements to the diagram scene."""
-        # Task nodes
+        """Adiciona alguns elementos de exemplo à cena do diagrama."""
+        # Nós de tarefa
         node1 = self.scene.addRect(50, 50, 100, 50, QPen(Qt.black), QBrush(QColor("lightblue")))
         node2 = self.scene.addRect(200, 150, 100, 50, QPen(Qt.black), QBrush(QColor("lightgreen")))
         node3 = self.scene.addRect(350, 50, 100, 50, QPen(Qt.black), QBrush(QColor("lightcoral")))
 
-        # Corrected addText usage: addText returns a QGraphicsTextItem, then set its position
+        # Uso corrigido de addText: addText retorna um QGraphicsTextItem, depois define sua posição
         text_item1 = self.scene.addText("Fase de Design")
         text_item1.setPos(55, 65)
         
@@ -53,7 +53,7 @@ class EngenhariaWorkflowTool(QWidget):
         text_item3 = self.scene.addText("Preparação da Produção")
         text_item3.setPos(355, 65)
 
-        # Links/Arrows
+        # Ligações/Setas
         pen = QPen(Qt.darkGray)
         pen.setWidth(2)
         self.scene.addLine(node1.x() + node1.rect().width(), node1.y() + node1.rect().height() / 2,
@@ -62,10 +62,10 @@ class EngenhariaWorkflowTool(QWidget):
                            node3.x(), node3.y() + node3.rect().height() / 2, pen)
 
     def _add_task_node(self):
-        """Adds a new generic task node to the diagram."""
-        x = 10 + len(self.nodes) * 120 # Offset for new nodes
+        """Adiciona um novo nó de tarefa genérico ao diagrama."""
+        x = 10 + len(self.nodes) * 120 # Deslocamento para novos nós
         y = 10 + (len(self.nodes) % 3) * 70
-        node = self.scene.addRect(x, y, 100, 50, QPen(Qt.black), QBrush(QColor("#FFD700"))) # Gold color
+        node = self.scene.addRect(x, y, 100, 50, QPen(Qt.black), QBrush(QColor("#FFD700"))) # Cor ouro
         
         text_item = self.scene.addText(f"Nova Tarefa {len(self.nodes) + 1}")
         text_item.setPos(x + 5, y + 15)
@@ -74,13 +74,13 @@ class EngenhariaWorkflowTool(QWidget):
         self.view.centerOn(node)
 
     def _add_dependency_link(self):
-        """Prompts user to select two nodes to link. (Conceptual, requires selection logic)."""
+        """Solicita ao usuário que selecione dois nós para ligar. (Conceitual, requer lógica de seleção)."""
         QMessageBox.information(self, "Adicionar Ligação", "Clique em dois nós de tarefa para criar uma ligação. (Lógica de seleção a ser implementada)")
 
     def _clear_diagram(self):
-        """Clears all elements from the diagram."""
+        """Limpa todos os elementos do diagrama."""
         self.scene.clear()
-        self.nodes = [] # Reset nodes list
+        self.nodes = [] # Reinicia a lista de nós
         QMessageBox.information(self, "Diagrama Limpo", "O diagrama foi limpo.")
 
 if __name__ == "__main__":
