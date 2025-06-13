@@ -3,124 +3,656 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>5revolution Login</title>
-    <!-- Tailwind CSS CDN for styling -->
+    <title>5revolution Dashboard</title>
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Inter font for consistent typography -->
+    <!-- Inter font -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f3f4f6; /* Light gray background */
+            background-color: #f3f4f6;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
         }
-        .login-card {
-            min-width: 320px;
-            max-width: 400px;
+        /* Custom styles for the tree view to make it look more like Teamcenter */
+        .tree-view {
+            background-color: #f0f0f0; /* Light gray background */
+            border-right: 1px solid #e0e0e0;
+            overflow-y: auto;
+            flex-shrink: 0;
+        }
+        .tree-item {
+            padding: 8px 12px;
+            cursor: pointer;
+            border-bottom: 1px solid #f0f0f0;
+            transition: background-color 0.2s ease;
+            display: flex;
+            align-items: center;
+        }
+        .tree-item:hover {
+            background-color: #e5e5e5;
+        }
+        .tree-item.selected {
+            background-color: #cceeff; /* Light blue for selected */
+            font-weight: 600;
+        }
+        .tree-item.parent {
+            font-weight: 700;
+            color: #333;
+        }
+        .tree-item-icon {
+            margin-right: 8px;
+            color: #666;
+        }
+
+        /* Styles for tabs */
+        .tab-content {
+            flex-grow: 1;
+            padding: 1rem;
+            background-color: #ffffff;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            overflow-y: auto;
+        }
+
+        /* Basic styling for diagram tool nodes/links - extends Tailwind */
+        .diagram-node {
+            background-color: #a7f3d0; /* light green */
+            border: 2px solid #34d399; /* green */
+            border-radius: 0.5rem;
+            padding: 0.5rem 1rem;
+            text-align: center;
+            position: absolute; /* For positioning within a container */
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            cursor: grab;
+        }
+        .diagram-link {
+            stroke: #6b7280; /* gray */
+            stroke-width: 2px;
+            fill: none;
+            marker-end: url(#arrowhead); /* For arrows */
+        }
+        /* Style for active tab header */
+        #tabs .active-tab {
+            background-color: #ffffff;
+            border-bottom-color: #ffffff;
+            border-top-left-radius: 0.5rem;
+            border-top-right-radius: 0.5rem;
+            font-weight: 600;
+            color: #1a202c; /* dark gray */
+        }
+        /* Style for inactive tab header */
+        #tabs .inactive-tab {
+            background-color: #e2e8f0; /* light blue-gray */
+            border-bottom: 1px solid #cbd5e0;
+            border-top-left-radius: 0.5rem;
+            border-top-right-radius: 0.5rem;
+            color: #4a5568; /* gray */
+        }
+        /* Close button for tabs */
+        .tab-close-btn {
+            margin-left: 0.5rem;
+            font-size: 0.8rem;
+            cursor: pointer;
+            color: #718096;
+            transition: color 0.2s ease;
+        }
+        .tab-close-btn:hover {
+            color: #e53e3e; /* red */
         }
     </style>
 </head>
-<body class="flex items-center justify-center min-h-screen">
-    <div class="login-card w-full p-8 bg-white shadow-xl rounded-xl">
-        <h1 class="text-3xl font-bold text-gray-800 mb-6 text-center">Login to 5revolution</h1>
-
-        <div id="messageBox" class="hidden mb-4 p-3 rounded-lg text-sm text-center"></div>
-
-        <form id="loginForm">
-            <div class="mb-4">
-                <label for="username" class="block text-gray-700 text-sm font-semibold mb-2">Username:</label>
-                <input type="text" id="username" name="username" class="shadow-sm appearance-none border rounded-lg w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Enter your username" required>
-            </div>
-            <div class="mb-6">
-                <label for="password" class="block text-gray-700 text-sm font-semibold mb-2">Password:</label>
-                <input type="password" id="password" name="password" class="shadow-sm appearance-none border rounded-lg w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Enter your password" required>
-            </div>
-            <div class="flex flex-col space-y-4">
-                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg focus:outline-none focus:shadow-outline transition-colors duration-200 shadow-md">
-                    Login
+<body class="flex flex-col min-h-screen">
+    <!-- Main Toolbar -->
+    <header class="bg-gray-800 text-white p-4 shadow-md flex justify-between items-center z-10">
+        <h1 class="text-xl font-semibold">5revolution Platform (Web)</h1>
+        <nav>
+            <div class="relative inline-block text-left">
+                <button id="toolsBtn" class="flex items-center px-4 py-2 text-sm font-medium rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white">
+                    <span class="mr-2">🛠</span> Tools
+                    <svg class="-mr-1 ml-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                        <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                    </svg>
                 </button>
-                <button type="button" id="registerButton" class="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg focus:outline-none focus:shadow-outline transition-colors duration-200 shadow-md">
-                    Register
-                </button>
+                <div id="toolsMenu" class="origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 hidden">
+                    <div class="py-1" role="menu" aria-orientation="vertical" aria-labelledby="toolsBtn">
+                        <!-- Tools will be dynamically inserted here -->
+                    </div>
+                </div>
             </div>
-        </form>
-    </div>
+
+            <div class="relative inline-block text-left ml-4">
+                <button id="profileBtn" class="flex items-center px-4 py-2 text-sm font-medium rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white">
+                    <span class="mr-2">👤</span> <span id="profileUsername">Profile</span>
+                    <svg class="-mr-1 ml-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                        <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                    </svg>
+                </button>
+                <div id="profileMenu" class="origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 hidden">
+                    <div class="py-1" role="menu" aria-orientation="vertical" aria-labelledby="profileBtn">
+                        <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" role="menuitem">⚙️ Settings</a>
+                        <a href="#" id="logoutBtn" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" role="menuitem">🔒 Logout</a>
+                    </div>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex flex-grow bg-gray-100">
+        <!-- Left Pane: Tree View -->
+        <aside class="w-64 bg-white shadow-lg p-4 tree-view">
+            <h2 class="text-lg font-semibold text-gray-800 mb-4">Workspace</h2>
+            <div id="treeViewContent" class="space-y-1">
+                <!-- Tree items will be dynamically inserted here -->
+                <div class="tree-item parent flex items-center">
+                    <span class="tree-item-icon">📁</span> Projects
+                </div>
+                <div class="ml-4 tree-item flex items-center">
+                    <span class="tree-item-icon">📂</span> Demo Project - Rev A
+                </div>
+                <div class="ml-8 tree-item flex items-center">
+                    <span class="tree-item-icon">📄</span> Part-001
+                </div>
+                <div class="ml-8 tree-item flex items-center">
+                    <span class="tree-item-icon">📦</span> Assembly-001
+                </div>
+                <div class="ml-4 tree-item flex items-center">
+                    <span class="tree-item-icon">📂</span> Sample Variant - V1.0
+                </div>
+                <div class="ml-8 tree-item flex items-center">
+                    <span class="tree-item-icon">🧩</span> Component-XYZ
+                </div>
+            </div>
+        </aside>
+
+        <!-- Right Pane: Tabbed Content Area -->
+        <section class="flex-grow flex flex-col p-4">
+            <div id="tabsHeader" class="flex border-b border-gray-300">
+                <!-- Tab buttons will be dynamically inserted here -->
+            </div>
+            <div id="tabsContent" class="flex-grow bg-white shadow-lg rounded-b-xl rounded-tr-xl p-4 mt-2">
+                <!-- Tab content will be dynamically loaded here -->
+            </div>
+        </section>
+    </main>
 
     <script>
-        const messageBox = document.getElementById('messageBox');
-        const loginForm = document.getElementById('loginForm');
-        const registerButton = document.getElementById('registerButton');
+        const AUTH_TOKEN = localStorage.getItem('authToken');
+        const profileUsernameEl = document.getElementById('profileUsername');
+        const toolsMenuEl = document.getElementById('toolsMenu').querySelector('div');
+        const tabsHeaderEl = document.getElementById('tabsHeader');
+        const tabsContentEl = document.getElementById('tabsContent');
+        const toolsBtn = document.getElementById('toolsBtn');
+        const profileBtn = document.getElementById('profileBtn');
+        const toolsMenu = document.getElementById('toolsMenu');
+        const profileMenu = document.getElementById('profileMenu');
+        const logoutBtn = document.getElementById('logoutBtn');
 
-        function showMessage(message, type = 'info') {
+        let allTools = {};
+        let userRole = '';
+        let userPermissions = {};
+        let openTabs = new Map(); // Map to store open tabs: 'tabId' -> {title, contentElement}
+        let activeTabId = null;
+
+        // --- Utility Functions ---
+        function showMessageBox(message, type = 'info') {
+            const messageBox = document.createElement('div');
+            messageBox.className = `fixed bottom-4 right-4 p-3 rounded-lg text-white shadow-md z-50 transition-transform transform translate-y-full opacity-0`;
+            if (type === 'error') messageBox.classList.add('bg-red-500');
+            else if (type === 'success') messageBox.classList.add('bg-green-500');
+            else messageBox.classList.add('bg-blue-500');
             messageBox.textContent = message;
-            messageBox.classList.remove('hidden', 'bg-red-100', 'text-red-700', 'bg-green-100', 'text-green-700', 'bg-blue-100', 'text-blue-700');
-            if (type === 'error') {
-                messageBox.classList.add('bg-red-100', 'text-red-700');
-            } else if (type === 'success') {
-                messageBox.classList.add('bg-green-100', 'text-green-700');
-            } else { // info
-                messageBox.classList.add('bg-blue-100', 'text-blue-700');
-            }
-            messageBox.classList.remove('hidden');
+
+            document.body.appendChild(messageBox);
+
+            setTimeout(() => {
+                messageBox.classList.remove('translate-y-full', 'opacity-0');
+                messageBox.classList.add('translate-y-0', 'opacity-100');
+            }, 50); // Small delay to allow CSS transition
+
+            setTimeout(() => {
+                messageBox.classList.remove('translate-y-0', 'opacity-100');
+                messageBox.classList.add('translate-y-full', 'opacity-0');
+                messageBox.addEventListener('transitionend', () => messageBox.remove());
+            }, 3000); // Hide after 3 seconds
         }
 
-        loginForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const username = document.getElementById('username').value;
-            const password = document.getElementById('password').value;
+        // --- Core UI Logic ---
 
-            // In a real application, you would send this to your backend
-            // For this example, we'll simulate a successful login.
-            if (username === "testuser" && password === "password") {
-                localStorage.setItem('authToken', 'fake-jwt-token-123'); // Store a dummy token
-                showMessage('Login successful! Redirecting...', 'success');
-                setTimeout(() => {
-                    window.location.href = 'dashboard.html'; // Redirect to dashboard
-                }, 1500);
-            } else {
-                showMessage('Invalid username or password.', 'error');
+        function openTab(id, title, contentGenerator) {
+            // Check if tab already open
+            if (openTabs.has(id)) {
+                switchTab(id);
+                return;
             }
 
-            // Example of a fetch request to a hypothetical backend endpoint:
-            /*
-            try {
-                const response = await fetch('/api/login', { // Replace with your actual backend login endpoint
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ username, password }),
+            // Create tab header button
+            const tabButton = document.createElement('button');
+            tabButton.id = `tab-btn-${id}`;
+            tabButton.className = 'tab-button px-4 py-2 text-sm font-medium border border-gray-300 border-b-0 rounded-t-lg focus:outline-none';
+            tabButton.innerHTML = `${title} <span class="tab-close-btn">&times;</span>`;
+            tabButton.onclick = () => switchTab(id);
+            tabsHeaderEl.appendChild(tabButton);
+
+            // Add close functionality to the 'x'
+            const closeSpan = tabButton.querySelector('.tab-close-btn');
+            closeSpan.onclick = (e) => {
+                e.stopPropagation(); // Prevent tab switch when clicking close
+                closeTab(id);
+            };
+
+            // Create tab content div
+            const tabContentDiv = document.createElement('div');
+            tabContentDiv.id = `tab-content-${id}`;
+            tabContentDiv.className = 'tab-content hidden h-full w-full';
+            tabsContentEl.appendChild(tabContentDiv);
+
+            // Generate content
+            contentGenerator(tabContentDiv);
+
+            openTabs.set(id, { title, contentElement: tabContentDiv, buttonElement: tabButton });
+            switchTab(id);
+        }
+
+        function switchTab(id) {
+            // Deactivate current active tab
+            if (activeTabId && openTabs.has(activeTabId)) {
+                openTabs.get(activeTabId).buttonElement.classList.remove('active-tab');
+                openTabs.get(activeTabId).buttonElement.classList.add('inactive-tab');
+                openTabs.get(activeTabId).contentElement.classList.add('hidden');
+            }
+
+            // Activate new tab
+            if (openTabs.has(id)) {
+                openTabs.get(id).buttonElement.classList.add('active-tab');
+                openTabs.get(id).buttonElement.classList.remove('inactive-tab');
+                openTabs.get(id).contentElement.classList.remove('hidden');
+                activeTabId = id;
+            }
+        }
+
+        function closeTab(idToClose) {
+            if (!openTabs.has(idToClose)) return;
+
+            const { buttonElement, contentElement } = openTabs.get(idToClose);
+
+            buttonElement.remove(); // Remove button
+            contentElement.remove(); // Remove content
+            openTabs.delete(idToClose); // Remove from map
+
+            // If the closed tab was active, switch to another or to home
+            if (activeTabId === idToClose) {
+                const tabIds = Array.from(openTabs.keys());
+                if (tabIds.length > 0) {
+                    switchTab(tabIds[0]); // Switch to the first remaining tab
+                } else {
+                    // No tabs left, maybe open a default home tab or clear content
+                    tabsContentEl.innerHTML = `
+                        <div class="flex flex-col items-center justify-center h-full text-gray-500">
+                            <svg class="w-16 h-16 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                            <p class="text-xl">No tabs open. Select a tool from the menu.</p>
+                        </div>
+                    `;
+                    activeTabId = null;
+                }
+            }
+        }
+
+        // --- Tool Content Generators ---
+        function createGenericToolContent(tool, parentElement) {
+            parentElement.innerHTML = `
+                <div class="p-6">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4">${tool.name}</h2>
+                    <p class="text-gray-700">${tool.description}</p>
+                    <p class="mt-4 text-sm text-gray-500">Path: <code>${tool.path}</code></p>
+                </div>
+            `;
+        }
+
+        function createEngenhariaWorkflowContent(parentElement) {
+            // A basic interactive diagramming placeholder
+            parentElement.innerHTML = `
+                <div class="p-4 flex flex-col h-full">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4">Engenharia (Workflow) Tool</h2>
+                    <p class="text-gray-700 mb-4">Design, approve, and track product engineering workflows with revision control.</p>
+
+                    <div class="flex space-x-2 mb-4">
+                        <button id="addNodeBtn" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">Add Task Node</button>
+                        <button id="addLinkBtn" class="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600">Add Dependency</button>
+                        <button id="clearDiagramBtn" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">Clear Diagram</button>
+                    </div>
+
+                    <div id="diagramCanvasContainer" class="relative flex-grow border border-gray-300 rounded-lg bg-gray-50 overflow-hidden">
+                        <svg id="diagramSVG" class="w-full h-full" viewBox="0 0 800 600" preserveAspectRatio="xMidYMid meet">
+                            <!-- Arrowhead definition -->
+                            <defs>
+                                <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="0" refY="3.5" orient="auto">
+                                    <polygon points="0 0, 10 3.5, 0 7" fill="#6b7280" />
+                                </marker>
+                            </defs>
+                            <!-- Diagram elements will be dynamically added here -->
+                        </svg>
+                    </div>
+                </div>
+            `;
+
+            const svg = parentElement.querySelector('#diagramSVG');
+            const nodes = [];
+            let currentNodeId = 0;
+
+            function addNode(x, y, text) {
+                const id = `node-${currentNodeId++}`;
+                const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                group.setAttribute('id', id);
+                group.classList.add('draggable-node'); // Add class for dragging
+                group.setAttribute('transform', `translate(${x}, ${y})`);
+
+                const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                rect.setAttribute('width', '120');
+                rect.setAttribute('height', '60');
+                rect.setAttribute('rx', '8');
+                rect.setAttribute('ry', '8');
+                rect.setAttribute('fill', '#A7F3D0'); // light green
+                rect.setAttribute('stroke', '#34D399'); // green
+                rect.setAttribute('stroke-width', '2');
+                group.appendChild(rect);
+
+                const textEl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                textEl.setAttribute('x', '60');
+                textEl.setAttribute('y', '35');
+                textEl.setAttribute('text-anchor', 'middle');
+                textEl.setAttribute('dominant-baseline', 'middle');
+                textEl.setAttribute('font-size', '14');
+                textEl.setAttribute('fill', '#1F2937'); // dark gray
+                textEl.textContent = text;
+                group.appendChild(textEl);
+
+                svg.appendChild(group);
+                nodes.push({ id, element: group, x, y, width: 120, height: 60 });
+
+                // Make nodes draggable
+                let isDragging = false;
+                let currentX, currentY;
+                let startX, startY;
+
+                group.addEventListener('mousedown', (e) => {
+                    isDragging = true;
+                    startX = e.clientX;
+                    startY = e.clientY;
+                    const transform = group.transform.baseVal.getItem(0); // Assumes only one transform
+                    currentX = transform ? transform.matrix.e : x;
+                    currentY = transform ? transform.matrix.f : y;
                 });
 
-                const data = await response.json();
+                svg.addEventListener('mousemove', (e) => {
+                    if (!isDragging) return;
+                    const dx = e.clientX - startX;
+                    const dy = e.clientY - startY;
+                    group.setAttribute('transform', `translate(${currentX + dx}, ${currentY + dy})`);
+                    // Update node position in nodes array
+                    const nodeIndex = nodes.findIndex(n => n.id === id);
+                    if (nodeIndex !== -1) {
+                        nodes[nodeIndex].x = currentX + dx;
+                        nodes[nodeIndex].y = currentY + dy;
+                    }
+                    // Re-draw links (conceptual - a full implementation would need to update lines connected to this node)
+                    updateLinks();
+                });
 
-                if (response.ok) {
-                    localStorage.setItem('authToken', data.token); // Store the actual token
-                    showMessage('Login successful! Redirecting...', 'success');
-                    setTimeout(() => {
-                        window.location.href = 'dashboard.html';
-                    }, 1500);
-                } else {
-                    showMessage(data.message || 'Login failed. Please try again.', 'error');
-                }
-            } catch (error) {
-                console.error('Login error:', error);
-                showMessage('An error occurred during login. Please try again later.', 'error');
+                svg.addEventListener('mouseup', () => {
+                    isDragging = false;
+                });
             }
-            */
-        });
 
-        registerButton.addEventListener('click', () => {
-            // For now, this just shows a message.
-            // In a real app, you'd navigate to a registration page or open a registration modal.
-            showMessage('Registration functionality is not yet implemented in the web version. Please register via the desktop app.', 'info');
-            // Alternatively, you could implement client-side registration here,
-            // similar to the login fetch example, sending data to a /api/register endpoint.
-        });
+            function addLink(node1Id, node2Id) {
+                const node1 = nodes.find(n => n.id === node1Id);
+                const node2 = nodes.find(n => n.id === node2Id);
 
-        // Automatically redirect to dashboard if already authenticated
-        if (localStorage.getItem('authToken')) {
-            window.location.href = 'dashboard.html';
+                if (node1 && node2) {
+                    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                    // Calculate centers for linking (simple for now)
+                    const x1 = node1.x + node1.width / 2;
+                    const y1 = node1.y + node1.height / 2;
+                    const x2 = node2.x + node2.width / 2;
+                    const y2 = node2.y + node2.height / 2;
+
+                    line.setAttribute('x1', x1);
+                    line.setAttribute('y1', y1);
+                    line.setAttribute('x2', x2);
+                    line.setAttribute('y2', y2);
+                    line.classList.add('diagram-link');
+                    line.setAttribute('marker-end', 'url(#arrowhead)'); // Add arrowhead
+
+                    // Store link information for updating
+                    line.dataset.source = node1Id;
+                    line.dataset.target = node2Id;
+
+                    svg.insertBefore(line, svg.firstChild); // Add lines below nodes
+                } else {
+                    showMessageBox('Could not create link: nodes not found.', 'error');
+                }
+            }
+
+            function updateLinks() {
+                // This function would iterate through all links and update their start/end points
+                // based on the current positions of the connected nodes.
+                // For this example, it's a conceptual placeholder.
+                const links = svg.querySelectorAll('.diagram-link');
+                links.forEach(link => {
+                    const sourceId = link.dataset.source;
+                    const targetId = link.dataset.target;
+                    const sourceNode = nodes.find(n => n.id === sourceId);
+                    const targetNode = nodes.find(n => n.id === targetId);
+
+                    if (sourceNode && targetNode) {
+                        const x1 = sourceNode.x + sourceNode.width / 2;
+                        const y1 = sourceNode.y + sourceNode.height / 2;
+                        const x2 = targetNode.x + targetNode.width / 2;
+                        const y2 = targetNode.y + targetNode.height / 2;
+                        link.setAttribute('x1', x1);
+                        link.setAttribute('y1', y1);
+                        link.setAttribute('x2', x2);
+                        link.setAttribute('y2', y2);
+                    }
+                });
+            }
+
+            // Sample elements on load
+            addNode(50, 50, "Design Phase");
+            addNode(200, 150, "Review (Approved)");
+            addNode(350, 50, "Production Prep");
+            // Add sample links after nodes are created
+            addLink('node-0', 'node-1');
+            addLink('node-1', 'node-2');
+
+
+            // Event Listeners for buttons
+            parentElement.querySelector('#addNodeBtn').addEventListener('click', () => {
+                const x = Math.random() * 600 + 50; // Random position
+                const y = Math.random() * 400 + 50;
+                addNode(x, y, `New Task ${nodes.length + 1}`);
+            });
+
+            parentElement.querySelector('#addLinkBtn').addEventListener('click', () => {
+                if (nodes.length < 2) {
+                    showMessageBox('Need at least two nodes to create a link.', 'error');
+                    return;
+                }
+                // For a real app, you'd need a way for the user to select two nodes.
+                // This is a simplified example:
+                const fromNodeId = prompt("Enter ID of source node (e.g., node-0):");
+                const toNodeId = prompt("Enter ID of target node (e.g., node-1):");
+                if (fromNodeId && toNodeId) {
+                    addLink(fromNodeId, toNodeId);
+                }
+            });
+
+            parentElement.querySelector('#clearDiagramBtn').addEventListener('click', () => {
+                svg.innerHTML = `
+                    <defs>
+                        <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="0" refY="3.5" orient="auto">
+                            <polygon points="0 0, 10 3.5, 0 7" fill="#6b7280" />
+                        </marker>
+                    </defs>
+                `; // Clear SVG but keep arrowhead def
+                nodes.length = 0; // Clear nodes array
+                currentNodeId = 0; // Reset node ID counter
+                showMessageBox('Diagram cleared.', 'info');
+            });
         }
+
+
+        function createMesPcpContent(parentElement) {
+            parentElement.innerHTML = `
+                <div class="p-6">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4">MES (Apontamento Fábrica)</h2>
+                    <p class="text-gray-700 mb-4">Input production data, track progress, and manage shop floor operations.</p>
+                    <form class="space-y-4">
+                        <div>
+                            <label for="orderId" class="block text-sm font-medium text-gray-700">Production Order ID:</label>
+                            <input type="text" id="orderId" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label for="itemCode" class="block text-sm font-medium text-gray-700">Item Code:</label>
+                            <input type="text" id="itemCode" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label for="quantity" class="block text-sm font-medium text-gray-700">Quantity Produced:</label>
+                            <input type="number" id="quantity" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label for="startTime" class="block text-sm font-medium text-gray-700">Start Time:</label>
+                            <input type="datetime-local" id="startTime" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label for="endTime" class="block text-sm font-medium text-gray-700">End Time:</label>
+                            <input type="datetime-local" id="endTime" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <button type="submit" class="px-6 py-2 bg-green-600 text-white font-medium rounded-lg shadow-md hover:bg-green-700 transition-colors duration-200">Submit Production Data</button>
+                    </form>
+                </div>
+            `;
+            // Add form submission logic here if needed, e.g., parentElement.querySelector('form').addEventListener('submit', ...)
+        }
+
+        // --- Event Listeners and Initial Load ---
+        toolsBtn.addEventListener('click', () => toolsMenu.classList.toggle('hidden'));
+        profileBtn.addEventListener('click', () => profileMenu.classList.toggle('hidden'));
+        document.addEventListener('click', (event) => {
+            if (!toolsBtn.contains(event.target) && !toolsMenu.contains(event.target)) {
+                toolsMenu.classList.add('hidden');
+            }
+            if (!profileBtn.contains(event.target) && !profileMenu.contains(event.target)) {
+                profileMenu.classList.add('hidden');
+            }
+        });
+
+        logoutBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const confirmLogout = confirm("Are you sure you want to log out?");
+            if (confirmLogout) {
+                localStorage.removeItem('authToken');
+                localStorage.removeItem('userRole'); // Clear user role
+                localStorage.removeItem('user'); // Clear user object
+                localStorage.removeItem('username'); // Clear username
+                window.location.href = '/login'; // Redirect to login page
+            }
+        });
+
+        async function fetchInitialData() {
+            if (!AUTH_TOKEN) {
+                window.location.href = '/login'; // Redirect if no token
+                return;
+            }
+
+            // Retrieve username and role from localStorage
+            const storedUser = JSON.parse(localStorage.getItem('user'));
+            if (storedUser) {
+                profileUsernameEl.textContent = storedUser.username;
+                userRole = storedUser.role; // Set the user role for permission checks
+            } else {
+                // Should not happen if login correctly set localStorage
+                console.error("User data not found in localStorage. Defaulting role to 'user'.");
+                userRole = 'user';
+                profileUsernameEl.textContent = 'User';
+            }
+
+            try {
+                const toolsResponse = await fetch('/api/tools', {
+                    headers: { 'Authorization': `Bearer ${AUTH_TOKEN}` }
+                });
+                if (!toolsResponse.ok) {
+                    throw new Error('Failed to fetch tools.');
+                }
+                allTools = await toolsResponse.json();
+
+                const permissionsResponse = await fetch('/api/permissions', {
+                    headers: { 'Authorization': `Bearer ${AUTH_TOKEN}` }
+                });
+                if (!permissionsResponse.ok) {
+                    throw new Error('Failed to fetch permissions.');
+                }
+                userPermissions = await permissionsResponse.json();
+
+                // Populate tools menu
+                const allowedTools = userPermissions[userRole] || [];
+                for (const toolId in allTools) {
+                    const tool = allTools[toolId];
+                    // Check if 'all' or if toolId is in allowed list
+                    if (allowedTools === 'all' || allowedTools.includes(tool.id)) {
+                        const toolMenuItem = document.createElement('a');
+                        toolMenuItem.href = "#";
+                        toolMenuItem.className = "block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100";
+                        toolMenuItem.textContent = tool.name;
+                        toolMenuItem.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            toolsMenu.classList.add('hidden'); // Hide menu after selection
+                            let contentGenerator;
+                            if (tool.id === 'mod4') { // Engenharia (Workflow)
+                                contentGenerator = (parentEl) => createEngenhariaWorkflowContent(parentEl);
+                            } else if (tool.id === 'mes_pcp') { // MES (Apontamento Fábrica)
+                                contentGenerator = (parentEl) => createMesPcpContent(parentEl);
+                            }
+                            else { // Generic tool
+                                contentGenerator = (parentEl) => createGenericToolContent(tool, parentEl);
+                            }
+                            openTab(tool.id, tool.name, contentGenerator);
+                        });
+                        toolsMenuEl.appendChild(toolMenuItem);
+                    }
+                }
+
+                // Open a default tab (e.g., "Home") on dashboard load
+                openTab('home', 'Home', (parentEl) => {
+                    parentEl.innerHTML = `
+                        <div class="flex flex-col items-center justify-center h-full text-gray-500">
+                            <h2 class="text-3xl font-bold text-gray-800 mb-4">Welcome, ${storedUser ? storedUser.username : 'User'}!</h2>
+                            <p class="text-xl mb-6">Your role: <span class="font-semibold text-blue-600">${userRole || 'N/A'}</span></p>
+                            <p class="text-md text-center">Select a tool from the "Tools" menu to get started.</p>
+                            <svg class="w-24 h-24 text-gray-400 mt-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+                        </div>
+                    `;
+                });
+
+            } catch (error) {
+                console.error('Error fetching initial dashboard data:', error);
+                showMessageBox(`Failed to load dashboard data: ${error.message}. Please try logging in again.`, 'error');
+                // Redirect to login if data fetch fails (e.g., token invalid)
+                setTimeout(() => { window.location.href = '/login'; }, 2000);
+            }
+        }
+
+        // Check authentication on load
+        if (!AUTH_TOKEN) {
+            window.location.href = '/login'; // Redirect to login if no token
+        } else {
+            fetchInitialData();
+        }
+
     </script>
 </body>
 </html>

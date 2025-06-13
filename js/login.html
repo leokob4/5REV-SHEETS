@@ -80,10 +80,15 @@
                 const data = await response.json();
 
                 if (response.ok) {
-                    localStorage.setItem('authToken', data.token); // Store the actual token from backend
+                    localStorage.setItem('authToken', data.token); // Store the actual token
+                    // Store user data from the backend response
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    localStorage.setItem('username', data.user.username);
+                    localStorage.setItem('userRole', data.user.role);
+
                     showMessage('Login successful! Redirecting...', 'success');
                     setTimeout(() => {
-                        window.location.href = 'dashboard.html';
+                        window.location.href = '/dashboard'; // Redirect to new /dashboard route
                     }, 1500);
                 } else {
                     showMessage(data.message || 'Login failed. Please try again.', 'error');
@@ -130,7 +135,7 @@
 
         // Automatically redirect to dashboard if already authenticated
         if (localStorage.getItem('authToken')) {
-            window.location.href = 'dashboard.html';
+            window.location.href = '/dashboard';
         }
     </script>
 </body>
