@@ -1,31 +1,4 @@
-add to requirements:
-pip install Flask openpyxl bcrypt
-update file structure
-web_server.py
-update html before search bar py
-research and add full functionality:
-ui/tools/product_data.py
-ui/tools/bom_manager.py
-ui/tools/configurador.py
-ui/tools/colaboradores.py
-ui/tools/items.py
-ui/tools/manufacturing.py
-ui/tools/pcp.py
-ui/tools/estoque.py
-ui/tools/financeiro.py
-ui/tools/pedidos.py
-ui/tools/manutencao.py
-to interact with
-/user_sheets/output.xlsx
-/user_sheets/RPI.xlsx
-/user_sheets/configurador.xlsx
-/user_sheets/colaboradores.xlsx
-/user_sheets/output.xlsx
-/user_sheets/RPI.xlsx
-/user_sheets/programacao.xlsx
-/user_sheets/estoque.xlsx
-/user_sheets/financeiro.xlsx
-/user_sheets/pedidos.xlsx
-/user_sheets/manutencao.xlsx
-that i made the first row.
-by doing "comment" from tools.xlsx
+update requirements file
+add keyboard enter key support to login screen
+adicionar tela de configuracoes no qmenu ⚙️ Configurações, colocar read only de perfil e informacoes pessoais como role perfil nessa mesma tela
+ajustar as "tools" .py da pasta ui/tools para utlizar os dados das primeiras linhas das planilhas criadas por mim, ler nome da página das planilhas e primeira linha.

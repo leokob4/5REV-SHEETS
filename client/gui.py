@@ -6,16 +6,39 @@ from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QToolBar, QAction, QTabWidget, QMenu, QToolButton,
     QWidget, QVBoxLayout, QSplitter, QTreeWidget, QTreeWidgetItem,
     QLabel, QLineEdit, QPushButton, QHBoxLayout, QMessageBox, QGraphicsView,
-    QGraphicsScene, QGraphicsRectItem, QGraphicsLineItem, QDialog, QListWidget, QListWidgetItem
+    QGraphicsScene, QGraphicsRectItem, QGraphicsLineItem, QDialog, QListWidget, QListWidgetItem, QTableWidget, QTableWidgetItem, QHeaderView
 )
 from PyQt5.QtCore import Qt, QPointF
-from PyQt5.QtGui import QBrush, QPen, QColor
+from PyQt5.QtGui import QBrush, QPen, QColor # QColor is correctly imported here
 
+# --- Fix for ModuleNotFoundError: No module named 'ui' ---
+# Get the absolute path of the directory containing gui.py
+current_dir = os.path.dirname(os.path.abspath(__file__))
+# Navigate up to the project root (assuming gui.py is in client/, and client/ is in project_root/)
+project_root = os.path.dirname(current_dir)
+# Add the project root to sys.path so Python can find 'ui' and 'user_sheets' etc.
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
+# --- Import New Tool Modules ---
+# Ensure these files exist in client/ui/tools/
+from ui.tools.product_data import ProductDataTool
+from ui.tools.bom_manager import BomManagerTool
+from ui.tools.configurador import ConfiguradorTool
+from ui.tools.colaboradores import ColaboradoresTool
+from ui.tools.items import ItemsTool
+from ui.tools.manufacturing import ManufacturingTool
+from ui.tools.pcp import PcpTool
+from ui.tools.estoque import EstoqueTool
+from ui.tools.financeiro import FinanceiroTool
+from ui.tools.pedidos import PedidosTool
+from ui.tools.manutencao import ManutencaoTool
 
 # --- File Paths Configuration ---
 # Define standard paths for consistency.
-USER_SHEETS_DIR = "user_sheets"
-APP_SHEETS_DIR = "app_sheets"
+# These paths are now relative to the project root, which is in sys.path
+USER_SHEETS_DIR = os.path.join(project_root, "user_sheets")
+APP_SHEETS_DIR = os.path.join(project_root, "app_sheets")
 DB_EXCEL_PATH = os.path.join(USER_SHEETS_DIR, "db.xlsx")
 TOOLS_EXCEL_PATH = os.path.join(APP_SHEETS_DIR, "tools.xlsx") # New path for tools.xlsx
 
@@ -53,13 +76,13 @@ def load_users_from_excel():
                 }
         return users
     except FileNotFoundError:
-        QMessageBox.critical(None, "File Not Found", f"Database file not found at: {DB_EXCEL_PATH}")
+        QMessageBox.critical(None, "Arquivo Não Encontrado", f"O arquivo do banco de dados não foi encontrado: {DB_EXCEL_PATH}")
         return {}
     except KeyError:
-        QMessageBox.critical(None, "Sheet Error", f"Sheet 'users' not found in {DB_EXCEL_PATH}")
+        QMessageBox.critical(None, "Erro de Planilha", f"A planilha 'users' não foi encontrada em {DB_EXCEL_PATH}")
         return {}
     except Exception as e:
-        QMessageBox.critical(None, "Loading Error", f"Error loading users: {e}")
+        QMessageBox.critical(None, "Erro de Carregamento", f"Erro ao carregar usuários: {e}")
         return {}
 
 def register_user(username, password, role="user"):
@@ -71,18 +94,18 @@ def register_user(username, password, role="user"):
         # Ensure unique username
         for row in sheet.iter_rows(min_row=2):
             if row[1].value == username:
-                raise ValueError("Username already exists.")
+                raise ValueError("Nome de usuário já existe.")
 
         password_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
         # Append new user data to the sheet
         sheet.append([next_id, username, password_hash, role])
         wb.save(DB_EXCEL_PATH)
     except FileNotFoundError:
-        QMessageBox.critical(None, "File Not Found", f"Database file not found at: {DB_EXCEL_PATH}. Cannot register user.")
+        QMessageBox.critical(None, "Arquivo Não Encontrado", f"O arquivo do banco de dados não foi encontrado em: {DB_EXCEL_PATH}. Não é possível registrar o usuário.")
     except KeyError:
-        QMessageBox.critical(None, "Sheet Error", f"Sheet 'users' not found in {DB_EXCEL_PATH}. Cannot register user.")
+        QMessageBox.critical(None, "Erro de Planilha", f"A planilha 'users' não foi encontrada em {DB_EXCEL_PATH}. Não é possível registrar o usuário.")
     except Exception as e:
-        QMessageBox.critical(None, "Registration Error", f"Error registering user: {e}")
+        QMessageBox.critical(None, "Erro de Registro", f"Ocorreu um erro durante o registro do usuário: {e}")
 
 def load_tools_from_excel():
     """
@@ -92,7 +115,7 @@ def load_tools_from_excel():
     tools = {}
     try:
         if not os.path.exists(TOOLS_EXCEL_PATH):
-            QMessageBox.critical(None, "File Not Found", f"Tools file not found at: {TOOLS_EXCEL_PATH}. Please ensure it exists.")
+            QMessageBox.critical(None, "Arquivo Não Encontrado", f"O arquivo de ferramentas não foi encontrado em: {TOOLS_EXCEL_PATH}. Por favor, certifique-se de que ele exista.")
             return {}
 
         wb = openpyxl.load_workbook(TOOLS_EXCEL_PATH)
@@ -100,7 +123,7 @@ def load_tools_from_excel():
         
         # Check if sheet has enough rows (at least header + one data row)
         if sheet.max_row < 2:
-            QMessageBox.warning(None, "Empty Sheet", f"Sheet 'tools' in {TOOLS_EXCEL_PATH} appears to be empty or only contains headers.")
+            QMessageBox.warning(None, "Planilha Vazia", f"A planilha 'tools' em {TOOLS_EXCEL_PATH} parece estar vazia ou conter apenas cabeçalhos.")
             return {}
 
         for row in sheet.iter_rows(min_row=2):
@@ -113,10 +136,10 @@ def load_tools_from_excel():
                     "path": row[3].value
                 }
     except KeyError:
-        QMessageBox.critical(None, "Sheet Error", f"Sheet 'tools' not found in {TOOLS_EXCEL_PATH}. Please ensure the sheet name is 'tools'.")
+        QMessageBox.critical(None, "Erro de Planilha", f"A planilha 'tools' não foi encontrada em {TOOLS_EXCEL_PATH}. Por favor, certifique-se de que o nome da planilha seja 'tools'.")
         return {}
     except Exception as e:
-        QMessageBox.critical(None, "Loading Error", f"Error loading tools: {e}")
+        QMessageBox.critical(None, "Erro de Carregamento", f"Erro ao carregar ferramentas: {e}")
         return {}
     return tools
 
@@ -134,16 +157,16 @@ def load_role_permissions():
             if len(row) >= 2 and row[1].value is not None:
                 perms[row[0].value] = row[1].value.split(",") if row[1].value.lower() != "all" else "all"
             else:
-                print(f"Warning: Skipping malformed row in 'access' sheet: {', '.join(str(c.value) for c in row)}")
+                print(f"Aviso: Ignorando linha malformada na planilha 'access': {', '.join(str(c.value) for c in row)}")
         return perms
     except FileNotFoundError:
-        QMessageBox.critical(None, "File Not Found", f"Database file not found at: {DB_EXCEL_PATH}")
+        QMessageBox.critical(None, "Arquivo Não Encontrado", f"O arquivo do banco de dados não foi encontrado em: {DB_EXCEL_PATH}")
         return {}
     except KeyError:
-        QMessageBox.critical(None, "Sheet Error", f"Sheet 'access' not found in {DB_EXCEL_PATH}")
+        QMessageBox.critical(None, "Erro de Planilha", f"A planilha 'access' não foi encontrada em {DB_EXCEL_PATH}")
         return {}
     except Exception as e:
-        QMessageBox.critical(None, "Loading Error", f"Error loading permissions: {e}")
+        QMessageBox.critical(None, "Erro de Carregamento", f"Erro ao carregar permissões: {e}")
         return {}
 
 
@@ -166,18 +189,18 @@ class LoginWindow(QWidget):
         layout = QVBoxLayout()
 
         self.username_input = QLineEdit()
-        self.username_input.setPlaceholderText("Username")
+        self.username_input.setPlaceholderText("Nome de Usuário")
         self.password_input = QLineEdit()
-        self.password_input.setPlaceholderText("Password")
+        self.password_input.setPlaceholderText("Senha")
         self.password_input.setEchoMode(QLineEdit.Password)
 
-        login_btn = QPushButton("Login")
+        login_btn = QPushButton("Entrar")
         login_btn.clicked.connect(self.authenticate)
 
-        register_btn = QPushButton("Register")
+        register_btn = QPushButton("Registrar")
         register_btn.clicked.connect(self.handle_register)
 
-        layout.addWidget(QLabel("Welcome to 5revolution"))
+        layout.addWidget(QLabel("Bem-vindo ao 5revolution"))
         layout.addWidget(self.username_input)
         layout.addWidget(self.password_input)
 
@@ -194,13 +217,13 @@ class LoginWindow(QWidget):
         pwd = self.password_input.text().strip()
 
         if not uname or not pwd:
-            QMessageBox.warning(self, "Login Failed", "Username and password cannot be empty.")
+            QMessageBox.warning(self, "Falha no Login", "Nome de usuário e senha não podem estar vazios.")
             return
 
         user = self.users.get(uname)
 
         if not user or not bcrypt.checkpw(pwd.encode(), user["password_hash"].encode()):
-            QMessageBox.warning(self, "Login Failed", "Invalid username or password.")
+            QMessageBox.warning(self, "Falha no Login", "Nome de usuário ou senha inválidos.")
             return
 
         # If authentication is successful, launch the main application
@@ -214,19 +237,19 @@ class LoginWindow(QWidget):
         pwd = self.password_input.text().strip()
 
         if not uname or not pwd:
-            QMessageBox.warning(self, "Validation Error", "Username and password are required for registration.")
+            QMessageBox.warning(self, "Erro de Validação", "Nome de usuário e senha são obrigatórios para o registro.")
             return
 
         try:
             register_user(uname, pwd)
-            QMessageBox.information(self, "Registered", f"User '{uname}' registered successfully with role 'user'.")
+            QMessageBox.information(self, "Registrado", f"Usuário '{uname}' registrado com sucesso com o papel 'user'.")
             self.users = load_users_from_excel() # Reload users after registration
             self.username_input.clear()
             self.password_input.clear()
         except ValueError as ve:
-            QMessageBox.warning(self, "Registration Failed", str(ve))
+            QMessageBox.warning(self, "Falha no Registro", str(ve))
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"An error occurred during registration: {e}")
+            QMessageBox.critical(self, "Erro", f"Ocorreu um erro durante o registro: {e}")
 
 # === NEW TOOL: ENGENHARIA WORKFLOW DIAGRAM ===
 class EngenhariaWorkflowTool(QWidget):
@@ -248,11 +271,11 @@ class EngenhariaWorkflowTool(QWidget):
 
         # Add control buttons
         control_layout = QHBoxLayout()
-        add_node_btn = QPushButton("Add Task Node")
+        add_node_btn = QPushButton("Adicionar Nó de Tarefa")
         add_node_btn.clicked.connect(self._add_task_node)
-        add_link_btn = QPushButton("Add Dependency Link")
+        add_link_btn = QPushButton("Adicionar Ligação de Dependência")
         add_link_btn.clicked.connect(self._add_dependency_link)
-        clear_btn = QPushButton("Clear Diagram")
+        clear_btn = QPushButton("Limpar Diagrama")
         clear_btn.clicked.connect(self._clear_diagram)
 
         control_layout.addWidget(add_node_btn)
@@ -264,14 +287,14 @@ class EngenhariaWorkflowTool(QWidget):
 
     def _add_sample_diagram_elements(self):
         """Adds some sample elements to the diagram scene."""
-        # Task nodes
-        node1 = self.scene.addRect(50, 50, 100, 50, QPen(Qt.black), QBrush(Qt.lightblue))
-        node2 = self.scene.addRect(200, 150, 100, 50, QPen(Qt.black), QBrush(Qt.lightgreen))
-        node3 = self.scene.addRect(350, 50, 100, 50, QPen(Qt.black), QBrush(Qt.lightcoral))
+        # Task nodes - CORRECTED COLOR USAGE
+        node1 = self.scene.addRect(50, 50, 100, 50, QPen(Qt.black), QBrush(QColor("lightblue")))
+        node2 = self.scene.addRect(200, 150, 100, 50, QPen(Qt.black), QBrush(QColor("lightgreen")))
+        node3 = self.scene.addRect(350, 50, 100, 50, QPen(Qt.black), QBrush(QColor("lightcoral")))
 
-        self.scene.addText("Design Phase", QPointF(55, 65))
-        self.scene.addText("Review (Approved)", QPointF(205, 165))
-        self.scene.addText("Production Prep", QPointF(355, 65))
+        self.scene.addText("Fase de Design", QPointF(55, 65))
+        self.scene.addText("Revisão (Aprovado)", QPointF(205, 165))
+        self.scene.addText("Preparação da Produção", QPointF(355, 65))
 
         # Links/Arrows
         pen = QPen(Qt.darkGray)
@@ -286,13 +309,13 @@ class EngenhariaWorkflowTool(QWidget):
         x = 10 + len(self.nodes) * 120 # Offset for new nodes
         y = 10 + (len(self.nodes) % 3) * 70
         node = self.scene.addRect(x, y, 100, 50, QPen(Qt.black), QBrush(QColor("#FFD700"))) # Gold color
-        self.scene.addText(f"New Task {len(self.nodes) + 1}", QPointF(x + 5, y + 15))
+        self.scene.addText(f"Nova Tarefa {len(self.nodes) + 1}", QPointF(x + 5, y + 15))
         self.nodes.append(node)
         self.view.centerOn(node)
 
     def _add_dependency_link(self):
         """Prompts user to select two nodes to link. (Conceptual, requires selection logic)."""
-        QMessageBox.information(self, "Add Link", "Click two task nodes to create a link. (Selection logic to be implemented)")
+        QMessageBox.information(self, "Adicionar Ligação", "Clique em dois nós de tarefa para criar uma ligação. (Lógica de seleção a ser implementada)")
         # In a real implementation, you'd need selection mechanisms (e.g., click listeners on QGraphicsRectItem)
         # to get two nodes and then draw a QGraphicsLineItem between their centroids or edges.
 
@@ -300,7 +323,7 @@ class EngenhariaWorkflowTool(QWidget):
         """Clears all elements from the diagram."""
         self.scene.clear()
         self.nodes = [] # Reset nodes list
-        QMessageBox.information(self, "Diagram Cleared", "The diagram has been cleared.")
+        QMessageBox.information(self, "Diagrama Limpo", "O diagrama foi limpo.")
 
 
 # === MAIN GUI ===
@@ -311,7 +334,7 @@ class TeamcenterStyleGUI(QMainWindow):
     """
     def __init__(self, user):
         super().__init__()
-        self.setWindowTitle("5revolution Platform")
+        self.setWindowTitle("Plataforma 5revolution")
         self.setGeometry(100, 100, 1280, 800) # x, y, width, height
 
         self.username = user["username"]
@@ -323,7 +346,7 @@ class TeamcenterStyleGUI(QMainWindow):
         self._create_main_layout()
 
         # Display user information in status bar
-        self.statusBar().showMessage(f"Logged in as: {self.username} | Role: {self.role}")
+        self.statusBar().showMessage(f"Logado como: {self.username} | Papel: {self.role}")
 
     def _create_toolbar(self):
         """Creates the main application toolbar."""
@@ -333,7 +356,7 @@ class TeamcenterStyleGUI(QMainWindow):
 
         # 🛠 Tools Menu Button
         self.tools_btn = QToolButton()
-        self.tools_btn.setText("🛠 Tools")
+        self.tools_btn.setText("🛠 Ferramentas")
         self.tools_btn.setPopupMode(QToolButton.InstantPopup) # Shows menu instantly on click
         tools_menu = QMenu()
 
@@ -342,13 +365,36 @@ class TeamcenterStyleGUI(QMainWindow):
             # Check if user has permission for this tool or if role is 'all'
             if allowed_tools == "all" or tid in allowed_tools:
                 action = tools_menu.addAction(tool["name"])
-                # Use functools.partial for passing arguments to slot (cleaner for loops)
-                # We need to map tool IDs to actual widget classes or functions
-                if tool["id"] == "mod4": # Special handling for the new Engenharia tool
+                
+                # Dynamically connect actions to the correct tool widgets
+                if tool["id"] == "mod4": # Engenharia (Workflow)
                     action.triggered.connect(lambda chk=False, title=tool["name"]: self._open_tab(title, EngenhariaWorkflowTool()))
-                elif tool["id"] == "mes_pcp": # Special handling for MES tool
+                elif tool["id"] == "mes_pcp": # MES (Apontamento Fábrica)
+                    # For MES, we will create a dedicated widget, perhaps using a placeholder class for now
                     action.triggered.connect(lambda chk=False, title=tool["name"]: self._open_tab(title, self._create_mes_pcp_tool_widget()))
-                else:
+                elif tool["id"] == "prod_data":
+                    action.triggered.connect(lambda chk=False, title=tool["name"]: self._open_tab(title, ProductDataTool()))
+                elif tool["id"] == "bom_manager":
+                    action.triggered.connect(lambda chk=False, title=tool["name"]: self._open_tab(title, BomManagerTool()))
+                elif tool["id"] == "configurador":
+                    action.triggered.connect(lambda chk=False, title=tool["name"]: self._open_tab(title, ConfiguradorTool()))
+                elif tool["id"] == "colab":
+                    action.triggered.connect(lambda chk=False, title=tool["name"]: self._open_tab(title, ColaboradoresTool()))
+                elif tool["id"] == "items_tool":
+                    action.triggered.connect(lambda chk=False, title=tool["name"]: self._open_tab(title, ItemsTool()))
+                elif tool["id"] == "manuf":
+                    action.triggered.connect(lambda chk=False, title=tool["name"]: self._open_tab(title, ManufacturingTool()))
+                elif tool["id"] == "pcp_tool":
+                    action.triggered.connect(lambda chk=False, title=tool["name"]: self._open_tab(title, PcpTool()))
+                elif tool["id"] == "estoque_tool":
+                    action.triggered.connect(lambda chk=False, title=tool["name"]: self._open_tab(title, EstoqueTool()))
+                elif tool["id"] == "financeiro":
+                    action.triggered.connect(lambda chk=False, title=tool["name"]: self._open_tab(title, FinanceiroTool()))
+                elif tool["id"] == "pedidos":
+                    action.triggered.connect(lambda chk=False, title=tool["name"]: self._open_tab(title, PedidosTool()))
+                elif tool["id"] == "manutencao":
+                    action.triggered.connect(lambda chk=False, title=tool["name"]: self._open_tab(title, ManutencaoTool()))
+                else: # Generic tool
                     action.triggered.connect(lambda chk=False, title=tool["name"], desc=tool["description"]: self._open_tab(title, QLabel(desc)))
         self.tools_btn.setMenu(tools_menu)
         self.toolbar.addWidget(self.tools_btn)
@@ -358,9 +404,9 @@ class TeamcenterStyleGUI(QMainWindow):
         self.profile_btn.setText(f"👤 {self.username}") # Display username in profile button
         self.profile_btn.setPopupMode(QToolButton.InstantPopup)
         profile_menu = QMenu()
-        profile_menu.addAction("⚙️ Settings", self._open_options)
+        profile_menu.addAction("⚙️ Configurações", self._open_options)
         profile_menu.addSeparator() # Add a separator for better visual grouping
-        profile_menu.addAction("🔒 Logout", self._logout)
+        profile_menu.addAction("🔒 Sair", self._logout)
         self.profile_btn.setMenu(profile_menu)
         self.toolbar.addWidget(self.profile_btn)
 
@@ -375,7 +421,7 @@ class TeamcenterStyleGUI(QMainWindow):
 
         # 🌳 Tree View (Left Pane)
         self.tree = QTreeWidget()
-        self.tree.setHeaderLabel("Workspace")
+        self.tree.setHeaderLabel("Espaço de Trabalho")
         self._populate_sample_tree() # Populate with sample data
         self.tree.expandAll() # Expand all tree items by default
         self.tree.setContextMenuPolicy(Qt.CustomContextMenu) # Enable custom context menu
@@ -384,7 +430,7 @@ class TeamcenterStyleGUI(QMainWindow):
         # Search Bar
         search_layout = QHBoxLayout()
         self.item_search_bar = QLineEdit()
-        self.item_search_bar.setPlaceholderText("Search items...")
+        self.item_search_bar.setPlaceholderText("Pesquisar itens...")
         self.item_search_bar.returnPressed.connect(self.handle_item_search) # Connect Enter key
         self.search_items_btn = QPushButton("🔍")
         self.search_items_btn.clicked.connect(self.handle_item_search)
@@ -393,7 +439,7 @@ class TeamcenterStyleGUI(QMainWindow):
         search_layout.addWidget(self.search_items_btn)
 
         # Add search bar and tree to the left pane layout
-        left_pane_layout.addWidget(QLabel("Workspace")) # Label above search bar
+        left_pane_layout.addWidget(QLabel("Espaço de Trabalho")) # Label above search bar
         left_pane_layout.addLayout(search_layout)
         left_pane_layout.addWidget(self.tree)
 
@@ -408,9 +454,9 @@ class TeamcenterStyleGUI(QMainWindow):
         # Welcome/Home Tab
         welcome_widget = QWidget()
         welcome_layout = QVBoxLayout()
-        welcome_layout.addWidget(QLabel(f"Welcome {self.username} – Role: {self.role}"))
+        welcome_layout.addWidget(QLabel(f"Bem-vindo {self.username} – Papel: {self.role}"))
         welcome_widget.setLayout(welcome_layout)
-        self.tabs.addTab(welcome_widget, "Home")
+        self.tabs.addTab(welcome_widget, "Início")
 
         # Add widgets to the splitter
         self.splitter.addWidget(left_pane_widget) # Add the container widget to the splitter
@@ -426,51 +472,50 @@ class TeamcenterStyleGUI(QMainWindow):
 
     def _populate_sample_tree(self):
         """Populates the tree with sample project/variant data."""
-        root = QTreeWidgetItem(["Projects"])
-        project1 = QTreeWidgetItem(["Demo Project - Rev A"])
-        project1.addChild(QTreeWidgetItem(["Part-001"]))
-        project1.addChild(QTreeWidgetItem(["Assembly-001"]))
-        root.addChild(project1)
-
-        project2 = QTreeWidgetItem(["Sample Variant - V1.0"])
-        project2.addChild(QTreeWidgetItem(["Component-XYZ"]))
-        root.addChild(project2)
-
+        root = QTreeWidgetItem(["Projetos"])
+        project1 = QTreeWidgetItem(["Projeto Demo - Rev A"])
+        project1.addChild(QTreeWidgetItem(["Peça-001"]))
+        project1.addChild(QTreeWidgetItem(["Montagem-001"]))
         self.tree.addTopLevelItem(root)
+
+        project2 = QTreeWidgetItem(["Variante Amostra - V1.0"])
+        project2.addChild(QTreeWidgetItem(["Componente-XYZ"]))
+        self.tree.addTopLevelItem(project2) # Added directly to root for testing different structures
 
     def _create_mes_pcp_tool_widget(self):
         """Creates the widget for the MES (Apontamento Fábrica) tool."""
         mes_widget = QWidget()
         mes_layout = QVBoxLayout()
         mes_layout.addWidget(QLabel("<h2>MES (Apontamento Fábrica)</h2>"))
-        mes_layout.addWidget(QLabel("Input production data, track progress, and manage shop floor operations."))
+        mes_layout.addWidget(QLabel("Inserir dados de produção, acompanhar progresso e gerenciar operações de chão de fábrica."))
 
         form_layout = QVBoxLayout()
-        self.order_id_input = QLineEdit()
-        self.order_id_input.setPlaceholderText("Production Order ID")
-        self.item_code_input = QLineEdit()
-        self.item_code_input.setPlaceholderText("Item Code")
-        self.quantity_input = QLineEdit()
-        self.quantity_input.setPlaceholderText("Quantity Produced")
+        # Using self.mes_ prefixes to avoid naming conflicts with other modules if they were directly in GUI
+        self.mes_order_id_input = QLineEdit()
+        self.mes_order_id_input.setPlaceholderText("ID da Ordem de Produção")
+        self.mes_item_code_input = QLineEdit()
+        self.mes_item_code_input.setPlaceholderText("Código do Item")
+        self.mes_quantity_input = QLineEdit()
+        self.mes_quantity_input.setPlaceholderText("Quantidade Produzida")
         # For simplicity, using QLineEdit. For actual datetime, consider QDateTimeEdit.
-        self.start_time_input = QLineEdit()
-        self.start_time_input.setPlaceholderText("Start Time (YYYY-MM-DD HH:MM)")
-        self.end_time_input = QLineEdit()
-        self.end_time_input.setPlaceholderText("End Time (YYYY-MM-DD HH:MM)")
+        self.mes_start_time_input = QLineEdit()
+        self.mes_start_time_input.setPlaceholderText("Hora de Início (AAAA-MM-DD HH:MM)")
+        self.mes_end_time_input = QLineEdit()
+        self.mes_end_time_input.setPlaceholderText("Hora de Término (AAAA-MM-DD HH:MM)")
 
-        submit_btn = QPushButton("Submit Production Data")
+        submit_btn = QPushButton("Enviar Dados de Produção")
         submit_btn.clicked.connect(self._submit_mes_data) # Connect to a submission handler
 
-        form_layout.addWidget(QLabel("Production Order ID:"))
-        form_layout.addWidget(self.order_id_input)
-        form_layout.addWidget(QLabel("Item Code:"))
-        form_layout.addWidget(self.item_code_input)
-        form_layout.addWidget(QLabel("Quantity Produced:"))
-        form_layout.addWidget(self.quantity_input)
-        form_layout.addWidget(QLabel("Start Time:"))
-        form_layout.addWidget(self.start_time_input)
-        form_layout.addWidget(QLabel("End Time:"))
-        form_layout.addWidget(self.end_time_input)
+        form_layout.addWidget(QLabel("ID da Ordem de Produção:"))
+        form_layout.addWidget(self.mes_order_id_input)
+        form_layout.addWidget(QLabel("Código do Item:"))
+        form_layout.addWidget(self.mes_item_code_input)
+        form_layout.addWidget(QLabel("Quantidade Produzida:"))
+        form_layout.addWidget(self.mes_quantity_input)
+        form_layout.addWidget(QLabel("Hora de Início:"))
+        form_layout.addWidget(self.mes_start_time_input)
+        form_layout.addWidget(QLabel("Hora de Término:"))
+        form_layout.addWidget(self.mes_end_time_input)
         form_layout.addWidget(submit_btn)
 
         mes_layout.addLayout(form_layout)
@@ -480,30 +525,30 @@ class TeamcenterStyleGUI(QMainWindow):
 
     def _submit_mes_data(self):
         """Handles submission of MES data (placeholder)."""
-        order_id = self.order_id_input.text()
-        item_code = self.item_code_input.text()
-        quantity = self.quantity_input.text()
-        start_time = self.start_time_input.text()
-        end_time = self.end_time_input.text()
+        order_id = self.mes_order_id_input.text()
+        item_code = self.mes_item_code_input.text()
+        quantity = self.mes_quantity_input.text()
+        start_time = self.mes_start_time_input.text()
+        end_time = self.mes_end_time_input.text()
 
         if not all([order_id, item_code, quantity, start_time, end_time]):
-            QMessageBox.warning(self, "Input Error", "All MES fields must be filled.")
+            QMessageBox.warning(self, "Erro de Entrada", "Todos os campos MES devem ser preenchidos.")
             return
 
         # In a real application, you would save this data to a database or file
-        QMessageBox.information(self, "MES Data Submitted",
-                                f"Production Data Submitted:\n"
-                                f"Order ID: {order_id}\n"
-                                f"Item Code: {item_code}\n"
-                                f"Quantity: {quantity}\n"
-                                f"Start: {start_time}\n"
-                                f"End: {end_time}")
+        QMessageBox.information(self, "Dados MES Enviados",
+                                f"Dados de Produção Enviados:\n"
+                                f"ID da Ordem: {order_id}\n"
+                                f"Código do Item: {item_code}\n"
+                                f"Quantidade: {quantity}\n"
+                                f"Início: {start_time}\n"
+                                f"Término: {end_time}")
         # Clear fields after submission
-        self.order_id_input.clear()
-        self.item_code_input.clear()
-        self.quantity_input.clear()
-        self.start_time_input.clear()
-        self.end_time_input.clear()
+        self.mes_order_id_input.clear()
+        self.mes_item_code_input.clear()
+        self.mes_quantity_input.clear()
+        self.mes_start_time_input.clear()
+        self.mes_end_time_input.clear()
 
     def handle_item_search(self):
         """
@@ -511,7 +556,7 @@ class TeamcenterStyleGUI(QMainWindow):
         """
         search_term = self.item_search_bar.text().strip().lower()
         if not search_term:
-            QMessageBox.information(self, "Search", "Please enter a search term.")
+            QMessageBox.information(self, "Pesquisar", "Por favor, digite um termo de pesquisa.")
             return
 
         results = [item for item in WORKSPACE_ITEMS if search_term in item.lower()]
@@ -522,13 +567,13 @@ class TeamcenterStyleGUI(QMainWindow):
         Displays search results in a new QDialog window.
         """
         dialog = QDialog(self)
-        dialog.setWindowTitle("Search Results")
+        dialog.setWindowTitle("Resultados da Pesquisa")
         dialog.setGeometry(self.x() + 200, self.y() + 100, 400, 300) # Position relative to main window
 
         layout = QVBoxLayout(dialog)
         
         if not results:
-            layout.addWidget(QLabel("No items found matching your search."))
+            layout.addWidget(QLabel("Nenhum item encontrado correspondente à sua pesquisa."))
         else:
             list_widget = QListWidget()
             for item in results:
@@ -538,7 +583,7 @@ class TeamcenterStyleGUI(QMainWindow):
             ) # Close dialog on double click
             layout.addWidget(list_widget)
 
-        close_btn = QPushButton("Close")
+        close_btn = QPushButton("Fechar")
         close_btn.clicked.connect(dialog.accept) # Close dialog on button click
         layout.addWidget(close_btn)
 
@@ -549,26 +594,26 @@ class TeamcenterStyleGUI(QMainWindow):
         Opens a new tab in the main GUI to display details of the selected item.
         """
         tab_id = f"item-details-{item_name.replace(' ', '-')}"
-        tab_title = f"Details: {item_name}"
+        tab_title = f"Detalhes: {item_name}"
 
         # Check if tab is already open
         for i in range(self.tabs.count()):
             if self.tabs.tabText(i) == tab_title:
                 self.tabs.setCurrentIndex(i)
-                QMessageBox.information(self, "Info", f"Tab for '{item_name}' is already open.")
+                QMessageBox.information(self, "Informação", f"A guia para '{item_name}' já está aberta.")
                 return
 
         # Create a widget for item details
         item_details_widget = QWidget()
         item_details_layout = QVBoxLayout()
-        item_details_layout.addWidget(QLabel(f"<h2>Item Details: {item_name}</h2>"))
-        item_details_layout.addWidget(QLabel(f"Displaying comprehensive details for <b>{item_name}</b>."))
-        item_details_layout.addWidget(QLabel("This section would load real data: properties, revisions, associated files, etc."))
+        item_details_layout.addWidget(QLabel(f"<h2>Detalhes do Item: {item_name}</h2>"))
+        item_details_layout.addWidget(QLabel(f"Exibindo detalhes abrangentes para <b>{item_name}</b>."))
+        item_details_layout.addWidget(QLabel("Esta seção carregaria dados reais: propriedades, revisões, arquivos associados, etc."))
         item_details_layout.addStretch() # Push content to top
         item_details_widget.setLayout(item_details_layout)
 
         self._open_tab(tab_title, item_details_widget)
-        QMessageBox.information(self, "Opened Item", f"Opened details for: {item_name}")
+        QMessageBox.information(self, "Item Aberto", f"Detalhes abertos para: {item_name}")
 
 
     def _open_tab(self, title, widget_instance):
@@ -586,11 +631,11 @@ class TeamcenterStyleGUI(QMainWindow):
 
     def _open_options(self):
         """Opens the user options/settings dialog."""
-        QMessageBox.information(self, "Options", "User settings will be managed here. (Feature under development)")
+        QMessageBox.information(self, "Opções", "As configurações do usuário serão gerenciadas aqui. (Recurso em desenvolvimento)")
 
     def _logout(self):
         """Logs out the current user and returns to the login screen."""
-        confirm_logout = QMessageBox.question(self, "Logout Confirmation", "Are you sure you want to log out?",
+        confirm_logout = QMessageBox.question(self, "Confirmação de Saída", "Tem certeza de que deseja sair?",
                                               QMessageBox.Yes | QMessageBox.No)
         if confirm_logout == QMessageBox.Yes:
             self.close() # Close the main application window
@@ -603,15 +648,15 @@ class TeamcenterStyleGUI(QMainWindow):
         if not item: return
 
         menu = QMenu()
-        # Actions for root items (e.g., "Projects")
+        # Actions for root items (e.g., "Projetos")
         if item.parent() is None:
-            menu.addAction("🔁 Refresh Project", lambda: QMessageBox.information(self, "Mock Action", "Project refreshed (mock action)"))
-            menu.addAction("➕ Add New Item", lambda: QMessageBox.information(self, "Mock Action", "Add new item (mock action)"))
-        # Actions for child items (e.g., "Demo Project", "Part-001")
+            menu.addAction("🔁 Atualizar Projeto", lambda: QMessageBox.information(self, "Ação Similada", "Projeto atualizado (ação simulada)"))
+            menu.addAction("➕ Adicionar Novo Item", lambda: QMessageBox.information(self, "Ação Similada", "Adicionar novo item (ação simulada)"))
+        # Actions for child items (e.g., "Projeto Demo", "Peça-001")
         else:
-            menu.addAction("🔍 View Details", lambda: QMessageBox.information(self, "Mock Action", f"Viewing details for: {item.text(0)} (mock action)"))
-            menu.addAction("✏️ Edit Properties", lambda: QMessageBox.information(self, "Mock Action", f"Editing properties for: {item.text(0)} (mock action)"))
-            menu.addAction("❌ Delete Item", lambda: QMessageBox.warning(self, "Mock Action", f"Deleted: {item.text(0)} (mock action)"))
+            menu.addAction("🔍 Ver Detalhes", lambda: QMessageBox.information(self, "Ação Similada", f"Visualizando detalhes para: {item.text(0)} (ação simulada)"))
+            menu.addAction("✏️ Editar Propriedades", lambda: QMessageBox.information(self, "Ação Similada", f"Editando propriedades para: {item.text(0)} (ação simulada)"))
+            menu.addAction("❌ Excluir Item", lambda: QMessageBox.warning(self, "Ação Similada", f"Excluído: {item.text(0)} (ação simulada)"))
 
         menu.exec_(self.tree.viewport().mapToGlobal(pos)) # Show menu at mouse position
 
@@ -621,12 +666,12 @@ class TeamcenterStyleGUI(QMainWindow):
         if index < 0: return # No tab clicked
 
         menu = QMenu()
-        menu.addAction("❌ Close Tab", lambda: self.tabs.removeTab(index))
-        # Ensure "Close Other Tabs" doesn't close the current tab if it's the only one
+        menu.addAction("❌ Fechar Guia", lambda: self.tabs.removeTab(index))
+        # Ensure "Fechar Outras Guias" doesn't close the current tab if it's the only one
         if self.tabs.count() > 1:
-            menu.addAction("🔁 Close Other Tabs", lambda: self._close_other_tabs(index))
-        if self.tabs.count() > 0: # Only show "Close All Tabs" if there are tabs
-            menu.addAction("🧹 Close All Tabs", self.tabs.clear)
+            menu.addAction("🔁 Fechar Outras Guias", lambda: self._close_other_tabs(index))
+        if self.tabs.count() > 0: # Only show "Fechar Todas as Guias" if there are tabs
+            menu.addAction("🧹 Fechar Todas as Guias", self.tabs.clear)
         menu.exec_(self.tabs.tabBar().mapToGlobal(pos))
 
     def _close_other_tabs(self, keep_index):
