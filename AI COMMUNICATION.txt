@@ -1,4 +1,6 @@
 XYZ***{{always re-send edited *.py files instead of showing modifications}}***
+use new icon from sprites folder for app
+
 fix launch_server.bat:
 ­ƒîÉ Starting FastAPI server on http://127.0.0.1:8000
 ←[32mINFO←[0m:     Will watch for changes in these directories: ['C:\\Users\\leona\\Documents\\5REV-SHEETS']
@@ -73,5 +75,13 @@ Traceback (most recent call last):
 KeyError: 'Worksheet tools does not exist.'
 Pressione qualquer tecla para continuar. . .
 ]
+fix access to front end: file:///C:/admin/reload dashboard page when access through link.
 
-fix access to front end: file:///C:/admin/reload
+Keep in mynd i changed tools.xlsx file to add more tools to each module avaiable yet it will dynamically update on startup right?
+Read the "comment" collumn and implement that changes to our erp suite for me, prompt me when you need more information about user input layout.
+
+
+
+
+
+
