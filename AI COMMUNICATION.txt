@@ -1,11 +1,12 @@
 XYZ***{{always re-send edited *.py files instead of showing modifications}}***
+(my current files share link:https://drive.google.com/drive/folders/1jTNrBntt-lCkxZQ0Nfn3c1xpbLtjro6m?usp=drive_link)
 [
 bake our qt5py login screen to be more responsible to errors]
 fix:path need some js to actually login to dashboard on web version
 http://127.0.0.1:8000/ shows nothing
 dashboard.html also need js
-to add to 
-https://github.com/leokob4/5REV-SHEETS
+for me to add to
+https://github.com/leokob4/5REV-SHEETS/js
 [
 ­ƒºá Launching PyQt5 GUI...
 Traceback (most recent call last):
@@ -25,9 +26,11 @@ Pressione qualquer tecla para continuar. . .
 ]=fiz um comentário no repositório do github para arrummarmos
 Keep in mynd i changed tools.xlsx file to add more tools to each module avaiable yet it will dynamically update on startup right?
 Read the "comment" collumn and implement that changes to our erp suite for me, prompt me when you need more information about user input layout.
-[a tool nova do "mod4" ENGENHARIA deve abrir na interface principal do app, desenvolver interface de diagramas com botões administrados pelo usuário para estabelecer e passar fluxos de tarefas a serem realizadas e aprovadas em cima de itens/projetos que contém vários itens.]
+[a tool nova do "mod4" ENGENHARIA deve abrir na interface principal do app, desenvolver interface de diagramas com botões administrados pelo usuário para estabelecer e passar fluxos de tarefas a serem realizadas e aprovadas em cima de itens/projetos que contém vários itens. como se fosse estabelecer também um controle de revisões/versões e alterações de engenharia de produto]
 pensar em nova tool para função de apontamento do usuário produtivo da fábrica como Manufacturing execution system, gerar linha para tools.xlsx no módulo pcp.
 send new files with //addres correctec please based on my repo folder structure
+its highest priority to implement communication redundancy to expect malfunctioning from our internet connection and prevent conflict from multiple users changins the same thing simultaneously
+
 fix access to front end: file:///C:/admin/reload dashboard page when access through link.
 use new icon from sprites folder for app
 
