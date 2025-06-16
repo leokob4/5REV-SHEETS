@@ -2,14 +2,17 @@ import os
 import openpyxl
 
 # Define o caminho do diretório user_sheets
-project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-user_sheets_dir = os.path.join(project_root, 'user_sheets')
-os.makedirs(user_sheets_dir, exist_ok=True) # Garante que o diretório exista
+# O script assume que estará em '5REV-SHEETS/app_sheets/tools/create_engenharia_xlsx.py'
+# project_root deve apontar para '5REV-SHEETS'
+project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+user_sheets_dir = os.path.join(project_root, 'user_sheets') # CORRIGIDO: Agora aponta para 'user_sheets'
+os.makedirs(user_sheets_dir, exist_ok=True) # Garante que o diretório user_sheets exista
 
 file_path = os.path.join(user_sheets_dir, "engenharia.xlsx")
-sheet_name = "Estrutura"
+sheet_name = "Estrutura" # Nome da planilha para a estrutura de engenharia
 
 # Define os cabeçalhos para o arquivo engenharia.xlsx
+# Estes cabeçalhos serão a base para a criação inicial da planilha.
 ENGENHARIA_HEADERS = [
     "part_number", "parent_part_number", "quantidade", "materia_prima"
 ]
@@ -40,19 +43,22 @@ sample_data = [
 
 def create_engenharia_xlsx():
     """Cria ou atualiza o arquivo engenharia.xlsx com os cabeçalhos e dados de exemplo."""
-    wb = openpyxl.Workbook()
-    ws = wb.active
-    ws.title = sheet_name
+    try:
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = sheet_name
 
-    # Adiciona os cabeçalhos
-    ws.append(ENGENHARIA_HEADERS)
+        # Adiciona os cabeçalhos
+        ws.append(ENGENHARIA_HEADERS)
 
-    # Adiciona os dados de exemplo
-    for row_data in sample_data:
-        ws.append(row_data)
+        # Adiciona os dados de exemplo
+        for row_data in sample_data:
+            ws.append(row_data)
 
-    wb.save(file_path)
-    print(f"Arquivo '{os.path.basename(file_path)}' criado/atualizado com a planilha '{sheet_name}'.")
+        wb.save(file_path)
+        print(f"Arquivo '{os.path.basename(file_path)}' criado/atualizado com a planilha '{sheet_name}'.")
+    except Exception as e:
+        print(f"Erro ao criar/atualizar {os.path.basename(file_path)}: {e}")
 
 if __name__ == "__main__":
     create_engenharia_xlsx()

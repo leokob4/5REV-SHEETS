@@ -1,4 +1,4 @@
-/workspaces/5REV-SHEETS
+.
 ├── AI COMMUNICATION.txt
 ├── __pycache__
 │   └── web_server.cpython-313.pyc
