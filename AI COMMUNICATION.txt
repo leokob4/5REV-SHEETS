@@ -1,7 +1,2 @@
-implementar dropbox na seleção de páginas das planilhas nas tools que tem que olhar todas as páginas já criadas possíveis deixando o usuário selecionar, igual na tool product_data já implementado.
-mostrar por default a primeira página da planilha independente do nome.
-Precisamos melhorar o todo do nosso projeto como uma coisa só, considerando as primeiras linhas da primeira página dos 
-.xlsx da pasta user_sheets como principais inputs do usuários dentro de cada tool particular
-para utilizar dados novos nas planilhas user_sheets que eu coloquei hoje com input e output de usuário para cada tool
-com input e output de usuário para cada tool, conforme adicionado novos dados voltados para cada usuário.
-tornar workspace_data.xlsx obsoleto neste processo
+implementar controle de seta do mouse para ajustar a largura e altura das colunas
+ajustar caminhos do arquivo e nomes do arqui tools para usarem dados atualizados do usuário na pasta user_sheets, por favor antes disso analisar minhas alteracoes na primeira linha e demais dados nas planilhas que vou enviar, são agora as mesmas contidas em user_sheets

@@ -4,13 +4,14 @@ import openpyxl
 from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QPushButton, QTableWidget, QTableWidgetItem, QHBoxLayout, QMessageBox, QHeaderView, QLabel, QComboBox
 from PyQt5.QtCore import Qt
 
-DEFAULT_DATA_EXCEL_FILENAME = "pcp_data.xlsx"
-DEFAULT_SHEET_NAME = "PCP"
+DEFAULT_DATA_EXCEL_FILENAME = "programacao.xlsx" # Mapeado para programacao.xlsx
+DEFAULT_SHEET_NAME = "programacao" # Nome da planilha padrão (assumindo 'programacao' é a primeira ou principal)
 
 class PcpTool(QWidget):
     """
     GUI para gerenciar dados de Planejamento e Controle de Produção (PCP).
     Permite visualizar, adicionar e salvar informações de PCP.
+    Permite redimensionamento interativo de colunas e linhas.
     """
     def __init__(self, file_path=None):
         super().__init__()
@@ -42,6 +43,9 @@ class PcpTool(QWidget):
         self.table = QTableWidget()
         self.table.setEditTriggers(QTableWidget.DoubleClicked | QTableWidget.AnyKeyPressed)
         self.table.setAlternatingRowColors(True)
+        # Habilitar redimensionamento interativo de colunas e linhas
+        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
+        self.table.verticalHeader().setSectionResizeMode(QHeaderView.Interactive)
         self.layout.addWidget(self.table)
 
         button_layout = QHBoxLayout()
@@ -142,7 +146,8 @@ class PcpTool(QWidget):
                     item = QTableWidgetItem(str(cell_value) if cell_value is not None else "")
                     self.table.setItem(row_idx, col_idx, item)
 
-            self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+            self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
+            self.table.verticalHeader().setSectionResizeMode(QHeaderView.Interactive)
             QMessageBox.information(self, "Dados Carregados", f"Dados de '{current_sheet_name}' carregados com sucesso.")
 
         except Exception as e:

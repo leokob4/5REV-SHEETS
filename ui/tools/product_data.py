@@ -1,7 +1,7 @@
 import sys
 import os
 import openpyxl
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QPushButton, QTableWidget, QTableWidgetItem, QHBoxLayout, QMessageBox, QHeaderView, QLineEdit, QLabel, QComboBox
+from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QPushButton, QTableWidget, QTableWidgetItem, QHBoxLayout, QMessageBox, QHeaderView, QLabel, QComboBox
 from PyQt5.QtCore import Qt
 
 # Define o caminho padrão para o arquivo Excel para esta ferramenta.
@@ -13,6 +13,7 @@ class ProductDataTool(QWidget):
     """
     GUI para gerenciar Dados do Produto.
     Permite visualizar, adicionar e salvar informações do produto em 'output.xlsx'.
+    Permite redimensionamento interativo de colunas e linhas.
     """
     def __init__(self, file_path=None):
         super().__init__()
@@ -31,7 +32,7 @@ class ProductDataTool(QWidget):
         header_layout = QHBoxLayout()
         self.file_name_label = QLabel(f"<b>Arquivo:</b> {os.path.basename(self.file_path)}")
         header_layout.addWidget(self.file_name_label)
-        header_layout.addStretch()
+        header_layout.addStretch() # Pushes other elements to the right
 
         header_layout.addWidget(QLabel("Planilha:"))
         self.sheet_selector = QComboBox()
@@ -47,6 +48,9 @@ class ProductDataTool(QWidget):
         self.table = QTableWidget()
         self.table.setEditTriggers(QTableWidget.DoubleClicked | QTableWidget.AnyKeyPressed)
         self.table.setAlternatingRowColors(True)
+        # Habilitar redimensionamento interativo de colunas e linhas
+        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
+        self.table.verticalHeader().setSectionResizeMode(QHeaderView.Interactive)
         self.layout.addWidget(self.table)
 
         # Botões de controle
@@ -152,14 +156,15 @@ class ProductDataTool(QWidget):
                     item = QTableWidgetItem(str(cell_value) if cell_value is not None else "")
                     self.table.setItem(row_idx, col_idx, item)
 
-            self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+            self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive) # Aplicar redimensionamento interativo
+            self.table.verticalHeader().setSectionResizeMode(QHeaderView.Interactive) # Aplicar redimensionamento interativo
             QMessageBox.information(self, "Dados Carregados", f"Dados de '{current_sheet_name}' carregados com sucesso.")
 
         except Exception as e:
             QMessageBox.critical(self, "Erro de Carregamento", f"Erro ao carregar dados do produto da aba '{current_sheet_name}': {e}")
             self.table.setRowCount(0)
             self.table.setColumnCount(0)
-            self.table.setHorizontalHeaderLabels(["Erro", "Erro", "Erro"])
+            self.table.setHorizontalHeaderLabels(["Erro", "Erro", "Erro", "Erro", "Erro"])
 
     def _save_data(self):
         """Salva dados do QTableWidget de volta para a planilha Excel."""
@@ -201,11 +206,13 @@ class ProductDataTool(QWidget):
 
             sheet = wb[current_sheet_name]
             
+            # Clear existing data but keep header (row 1)
             for row_idx in range(sheet.max_row, 1, -1):
                 sheet.delete_rows(row_idx)
 
+            # Write current headers from table (in case they were changed in GUI, though not expected for now)
             current_headers = [self.table.horizontalHeaderItem(col).text() for col in range(self.table.columnCount())]
-            if not current_headers:
+            if not current_headers: # If no headers are set in the table (e.g., table was empty on load)
                 current_headers = ["ID", "Nome do Produto", "Código", "Revisão", "Descrição"]
                 self.table.setColumnCount(len(current_headers))
                 self.table.setHorizontalHeaderLabels(current_headers)
@@ -215,6 +222,7 @@ class ProductDataTool(QWidget):
                 for col_idx, header_value in enumerate(current_headers):
                     sheet.cell(row=1, column=col_idx + 1, value=header_value)
             
+            # Append all rows from the QTableWidget
             for row_idx in range(self.table.rowCount()):
                 row_data = []
                 for col_idx in range(self.table.columnCount()):
@@ -237,7 +245,6 @@ class ProductDataTool(QWidget):
 # Exemplo de uso (para testar este módulo individualmente)
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    # Exemplo: Criar um arquivo temporário para teste
     project_root_test = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
     test_file_dir = os.path.join(project_root_test, 'user_sheets')
     os.makedirs(test_file_dir, exist_ok=True)

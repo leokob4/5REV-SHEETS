@@ -7,6 +7,7 @@ from PyQt5.QtCore import Qt
 class ExcelViewerTool(QWidget):
     """
     A generic tool for viewing and editing any Excel file (.xlsx) with sheet selection.
+    Allows interactive resizing of columns and rows.
     """
     def __init__(self, file_path=None):
         super().__init__()
@@ -34,6 +35,9 @@ class ExcelViewerTool(QWidget):
         self.table = QTableWidget()
         self.table.setEditTriggers(QTableWidget.DoubleClicked | QTableWidget.AnyKeyPressed)
         self.table.setAlternatingRowColors(True)
+        # Habilitar redimensionamento interativo de colunas e linhas
+        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
+        self.table.verticalHeader().setSectionResizeMode(QHeaderView.Interactive)
         self.layout.addWidget(self.table)
 
         # Control buttons
@@ -60,8 +64,7 @@ class ExcelViewerTool(QWidget):
         self.sheet_selector.clear()
         if not self.file_path or not os.path.exists(self.file_path):
             QMessageBox.warning(self, "Arquivo Não Encontrado", f"O arquivo Excel não foi encontrado ou especificado: {self.file_path}. Crie-o ao salvar.")
-            # If file doesn't exist, provide a default "Sheet1" for new file creation
-            self.sheet_selector.addItem("Sheet1")
+            self.sheet_selector.addItem("Sheet1") # Provide a default "Sheet1" for new file creation
             self.table.setRowCount(0)
             self.table.setColumnCount(0)
             self.table.setHorizontalHeaderLabels(["Coluna 1", "Coluna 2", "Coluna 3"]) # Default headers for new files
@@ -101,8 +104,6 @@ class ExcelViewerTool(QWidget):
         try:
             wb = None
             if not os.path.exists(self.file_path):
-                # This should ideally be handled by _populate_sheet_selector or save logic.
-                # If we reach here and file doesn't exist, just clear table.
                 self.table.setRowCount(0)
                 self.table.setColumnCount(0)
                 self.table.setHorizontalHeaderLabels(["Coluna 1", "Coluna 2", "Coluna 3"]) # Default headers
@@ -110,7 +111,6 @@ class ExcelViewerTool(QWidget):
 
             wb = openpyxl.load_workbook(self.file_path)
             if current_sheet_name not in wb.sheetnames:
-                # If sheet doesn't exist (e.g., user typed a new name), create it with headers
                 QMessageBox.information(self, "Planilha Não Encontrada", f"A planilha '{current_sheet_name}' não foi encontrada em '{os.path.basename(self.file_path)}'. Criando uma nova.")
                 ws = wb.create_sheet(current_sheet_name)
                 default_headers = ["Coluna 1", "Coluna 2", "Coluna 3"]
@@ -135,7 +135,8 @@ class ExcelViewerTool(QWidget):
                     item = QTableWidgetItem(str(cell_value) if cell_value is not None else "")
                     self.table.setItem(row_idx, col_idx, item)
 
-            self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+            self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive) # Apply interactive resizing
+            self.table.verticalHeader().setSectionResizeMode(QHeaderView.Interactive) # Apply interactive resizing
             QMessageBox.information(self, "Dados Carregados", f"Dados de '{current_sheet_name}' carregados com sucesso.")
 
         except Exception as e:

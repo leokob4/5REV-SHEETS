@@ -37,11 +37,10 @@ from ui.tools.manutencao import ManutencaoTool
 from ui.tools.structure_view_tool import StructureViewTool
 from ui.tools.user_settings_tool import UserSettingsTool
 from ui.tools.engenharia_workflow_tool import EngenhariaWorkflowTool
-from ui.tools.excel_viewer_tool import ExcelViewerTool # Novo import para a ferramenta genérica de visualização de Excel
+from ui.tools.excel_viewer_tool import ExcelViewerTool # Ferramenta genérica de visualização de Excel
+from ui.tools.rpi_tool import RpiTool # Nova ferramenta para RPI.xlsx
 
-# Importa o novo diálogo de adição de item (agora de client.add_item_dialog)
-# Note: As funções de adição de item ao 'workspace_data.xlsx' serão removidas,
-# mas o diálogo pode ser reutilizado para outras finalidades no futuro se necessário.
+# Importa o diálogo de adição de item (manter se ainda for útil para outras funções)
 from client.add_item_dialog import AddItemDialog 
 
 # --- Configuração de Caminhos de Arquivos ---
@@ -58,20 +57,22 @@ os.makedirs(APP_SHEETS_DIR, exist_ok=True)
 
 # --- Mapeamento de Nomes de Arquivo Excel para Ferramentas Específicas ---
 # Adicione mais mapeamentos conforme você implementa cada ferramenta
+# O nome do arquivo Excel (minúsculas) deve corresponder à chave.
 EXCEL_TOOL_MAP = {
     "output.xlsx": ProductDataTool,
     "bom_data.xlsx": BomManagerTool,
-    "configurador_data.xlsx": ConfiguradorTool,
-    "colaboradores_data.xlsx": ColaboradoresTool,
+    "configurador.xlsx": ConfiguradorTool, # Assumindo o nome do arquivo, confirme se é este
+    "colaboradores.xlsx": ColaboradoresTool, # Assumindo o nome do arquivo, confirme se é este
     "items_data.xlsx": ItemsTool,
     "manufacturing_data.xlsx": ManufacturingTool,
-    "pcp_data.xlsx": PcpTool,
+    "programacao.xlsx": PcpTool, # Mapeando programacao.xlsx para PcpTool
     "estoque_data.xlsx": EstoqueTool,
-    "financeiro_data.xlsx": FinanceiroTool,
+    "financeiro.xlsx": FinanceiroTool, # Assumindo o nome do arquivo, confirme se é este
     "pedidos_data.xlsx": PedidosTool,
     "manutencao_data.xlsx": ManutencaoTool,
-    # Atenção: 'db.xlsx' e 'tools.xlsx' são arquivos do sistema, não devem ser abertos diretamente por aqui.
-    # Engenharia Workflow Tool (mod4) não interage diretamente com um arquivo .xlsx de usuário de forma padronizada para este mapeamento
+    "rpi.xlsx": RpiTool, # Mapeando RPI.xlsx para a nova RpiTool
+    # 'db.xlsx' e 'tools.xlsx' são arquivos do sistema, não devem ser abertos diretamente por este mapeamento.
+    # 'engenharia_workflow_tool' e 'user_settings_tool' não são diretamente baseadas em arquivos Excel.
 }
 
 
@@ -82,7 +83,9 @@ def load_users_from_excel():
         wb = openpyxl.load_workbook(DB_EXCEL_PATH)
         users_sheet = wb["users"]
         users = {}
+        # Iterate from the second row to skip headers
         for row in users_sheet.iter_rows(min_row=2):
+            # Check if row has enough cells before accessing
             if len(row) >= 4:
                 users[row[1].value] = {
                     "id": row[0].value,
@@ -107,11 +110,13 @@ def register_user(username, password, role="user"):
         wb = openpyxl.load_workbook(DB_EXCEL_PATH)
         sheet = wb["users"]
         next_id = sheet.max_row
+        # Ensure unique username
         for row in sheet.iter_rows(min_row=2):
             if row[1].value == username:
                 raise ValueError("Nome de usuário já existe.")
 
         password_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+        # Append new user data to the sheet
         sheet.append([next_id, username, password_hash, role])
         wb.save(DB_EXCEL_PATH)
     except FileNotFoundError:
@@ -133,14 +138,16 @@ def load_tools_from_excel():
             return {}
 
         wb = openpyxl.load_workbook(TOOLS_EXCEL_PATH)
-        sheet = wb["tools"]
+        sheet = wb["tools"] # Corrected to read from 'tools' sheet
         
+        # Check if sheet has enough rows (at least header + one data row)
         if sheet.max_row < 2:
             QMessageBox.warning(None, "Planilha Vazia", f"A planilha 'tools' em {TOOLS_EXCEL_PATH} parece estar vazia ou conter apenas cabeçalhos.")
             return {}
 
         for row in sheet.iter_rows(min_row=2):
-            if len(row) >= 4 and all(cell.value is not None for cell in row[:4]):
+            # Ensure enough cells are present to avoid IndexError
+            if len(row) >= 4 and all(cell.value is not None for cell in row[:4]): # Ensure ID, Name, Desc, Path exist
                 tools[row[0].value] = {
                     "id": row[0].value,
                     "name": row[1].value,
@@ -163,7 +170,9 @@ def load_role_permissions():
         wb = openpyxl.load_workbook(DB_EXCEL_PATH)
         sheet = wb["access"]
         perms = {}
+        # Iterate from the second row to skip headers
         for row in sheet.iter_rows(min_row=2):
+            # Check if row has enough cells and value is not None
             if len(row) >= 2 and row[1].value is not None:
                 perms[row[0].value] = row[1].value.split(",") if row[1].value.lower() != "all" else "all"
             else:
@@ -188,8 +197,8 @@ class LoginWindow(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("5revolution Login")
-        self.setGeometry(400, 200, 300, 180)
-        self.users = load_users_from_excel()
+        self.setGeometry(400, 200, 300, 180) # x, y, width, height
+        self.users = load_users_from_excel() # Load users on initialization
 
         self._init_ui()
 
@@ -199,11 +208,13 @@ class LoginWindow(QWidget):
 
         self.username_input = QLineEdit()
         self.username_input.setPlaceholderText("Nome de Usuário")
+        # Connect returnPressed to authenticate
         self.username_input.returnPressed.connect(self.authenticate)
         
         self.password_input = QLineEdit()
         self.password_input.setPlaceholderText("Senha")
         self.password_input.setEchoMode(QLineEdit.Password)
+        # Connect returnPressed to authenticate
         self.password_input.returnPressed.connect(self.authenticate)
 
         login_btn = QPushButton("Entrar")
@@ -238,9 +249,10 @@ class LoginWindow(QWidget):
             QMessageBox.warning(self, "Falha no Login", "Nome de usuário ou senha inválidos.")
             return
 
+        # If authentication is successful, launch the main application
         self.main = TeamcenterStyleGUI(user)
         self.main.show()
-        self.close()
+        self.close() # Close the login window
 
     def handle_register(self):
         """Gerencia o registro de usuário."""
@@ -254,7 +266,7 @@ class LoginWindow(QWidget):
         try:
             register_user(uname, pwd)
             QMessageBox.information(self, "Registrado", f"Usuário '{uname}' registrado com sucesso com o papel 'user'.")
-            self.users = load_users_from_excel()
+            self.users = load_users_from_excel() # Reload users after registration
             self.username_input.clear()
             self.password_input.clear()
         except ValueError as ve:
@@ -271,31 +283,34 @@ class TeamcenterStyleGUI(QMainWindow):
     def __init__(self, user):
         super().__init__()
         self.setWindowTitle("Plataforma 5revolution")
-        self.setGeometry(100, 100, 1280, 800)
+        self.setGeometry(100, 100, 1280, 800) # x, y, width, height
 
         self.username = user["username"]
         self.role = user["role"]
-        self.tools = load_tools_from_excel()
+        self.tools = load_tools_from_excel() # Load tools using the updated function
         self.permissions = load_role_permissions()
         
         self._create_toolbar()
         self._create_main_layout()
 
+        # Display user information in status bar
         self.statusBar().showMessage(f"Logado como: {self.username} | Papel: {self.role}")
 
     def _create_toolbar(self):
         """Cria a barra de ferramentas principal da aplicação."""
         self.toolbar = QToolBar("Main Toolbar")
-        self.toolbar.setMovable(False)
+        self.toolbar.setMovable(False) # Make toolbar fixed
         self.addToolBar(Qt.TopToolBarArea, self.toolbar)
 
+        # 🛠 Tools Menu Button
         self.tools_btn = QToolButton()
         self.tools_btn.setText("🛠 Ferramentas")
-        self.tools_btn.setPopupMode(QToolButton.InstantPopup)
+        self.tools_btn.setPopupMode(QToolButton.InstantPopup) # Shows menu instantly on click
         tools_menu = QMenu()
 
-        allowed_tools = self.permissions.get(self.role, [])
+        allowed_tools = self.permissions.get(self.role, []) # Get allowed tools for the user's role
         for tid, tool in self.tools.items():
+            # Check if user has permission for this tool or if role is 'all'
             if allowed_tools == "all" or tid in allowed_tools:
                 action = tools_menu.addAction(tool["name"])
                 
@@ -303,90 +318,105 @@ class TeamcenterStyleGUI(QMainWindow):
                 if tool["id"] == "mod4": # Engenharia (Workflow)
                     action.triggered.connect(lambda chk=False, title=tool["name"]: self._open_tab(title, EngenhariaWorkflowTool()))
                 elif tool["id"] == "mes_pcp": # MES (Apontamento Fábrica)
+                    # Para MES, vamos criar um widget dedicado, talvez usando uma classe placeholder por agora
                     action.triggered.connect(lambda chk=False, title=tool["name"]: self._open_tab(title, self._create_mes_pcp_tool_widget()))
-                elif tool["id"] == "prod_data":
-                    action.triggered.connect(lambda chk=False, title=tool["name"]: self._open_tab(title, ProductDataTool()))
-                elif tool["id"] == "bom_manager":
-                    action.triggered.connect(lambda chk=False, title=tool["name"]: self._open_tab(title, BomManagerTool()))
-                elif tool["id"] == "configurador":
-                    action.triggered.connect(lambda chk=False, title=tool["name"]: self._open_tab(title, ConfiguradorTool()))
-                elif tool["id"] == "colab":
-                    action.triggered.connect(lambda chk=False, title=tool["name"]: self._open_tab(title, ColaboradoresTool()))
-                elif tool["id"] == "items_tool":
-                    action.triggered.connect(lambda chk=False, title=tool["name"]: self._open_tab(title, ItemsTool()))
-                elif tool["id"] == "manuf":
-                    action.triggered.connect(lambda chk=False, title=tool["name"]: self._open_tab(title, ManufacturingTool()))
-                elif tool["id"] == "pcp_tool":
-                    action.triggered.connect(lambda chk=False, title=tool["name"]: self._open_tab(title, PcpTool()))
-                elif tool["id"] == "estoque_tool":
-                    action.triggered.connect(lambda chk=False, title=tool["name"]: self._open_tab(title, EstoqueTool()))
-                elif tool["id"] == "financeiro":
-                    action.triggered.connect(lambda chk=False, title=tool["name"]: self._open_tab(title, FinanceiroTool()))
-                elif tool["id"] == "pedidos":
-                    action.triggered.connect(lambda chk=False, title=tool["name"]: self._open_tab(title, PedidosTool()))
-                elif tool["id"] == "manutencao":
-                    action.triggered.connect(lambda chk=False, title=tool["name"]: self._open_tab(title, ManutencaoTool()))
-                else:
+                elif tool["id"] == "prod_data": # Dados do Produto
+                    # ProductDataTool agora espera um file_path; vamos passar o default output.xlsx
+                    action.triggered.connect(lambda chk=False, title=tool["name"]: self._open_tab(title, ProductDataTool(file_path=os.path.join(USER_SHEETS_DIR, "output.xlsx"))))
+                elif tool["id"] == "bom_manager": # Gerenciador de BOM
+                    action.triggered.connect(lambda chk=False, title=tool["name"]: self._open_tab(title, BomManagerTool(file_path=os.path.join(USER_SHEETS_DIR, "bom_data.xlsx"))))
+                elif tool["id"] == "configurador": # Configurador
+                    action.triggered.connect(lambda chk=False, title=tool["name"]: self._open_tab(title, ConfiguradorTool(file_path=os.path.join(USER_SHEETS_DIR, "configurador.xlsx"))))
+                elif tool["id"] == "colab": # Colaboradores
+                    action.triggered.connect(lambda chk=False, title=tool["name"]: self._open_tab(title, ColaboradoresTool(file_path=os.path.join(USER_SHEETS_DIR, "colaboradores.xlsx"))))
+                elif tool["id"] == "items_tool": # Itens
+                    action.triggered.connect(lambda chk=False, title=tool["name"]: self._open_tab(title, ItemsTool(file_path=os.path.join(USER_SHEETS_DIR, "items_data.xlsx"))))
+                elif tool["id"] == "manuf": # Fabricação
+                    action.triggered.connect(lambda chk=False, title=tool["name"]: self._open_tab(title, ManufacturingTool(file_path=os.path.join(USER_SHEETS_DIR, "manufacturing_data.xlsx"))))
+                elif tool["id"] == "pcp_tool": # PCP
+                    action.triggered.connect(lambda chk=False, title=tool["name"]: self._open_tab(title, PcpTool(file_path=os.path.join(USER_SHEETS_DIR, "programacao.xlsx"))))
+                elif tool["id"] == "estoque_tool": # Estoque
+                    action.triggered.connect(lambda chk=False, title=tool["name"]: self._open_tab(title, EstoqueTool(file_path=os.path.join(USER_SHEETS_DIR, "estoque_data.xlsx"))))
+                elif tool["id"] == "financeiro": # Financeiro
+                    action.triggered.connect(lambda chk=False, title=tool["name"]: self._open_tab(title, FinanceiroTool(file_path=os.path.join(USER_SHEETS_DIR, "financeiro.xlsx"))))
+                elif tool["id"] == "pedidos": # Pedidos
+                    action.triggered.connect(lambda chk=False, title=tool["name"]: self._open_tab(title, PedidosTool(file_path=os.path.join(USER_SHEETS_DIR, "pedidos_data.xlsx"))))
+                elif tool["id"] == "manutencao": # Manutenção
+                    action.triggered.connect(lambda chk=False, title=tool["name"]: self._open_tab(title, ManutencaoTool(file_path=os.path.join(USER_SHEETS_DIR, "manutencao_data.xlsx"))))
+                else: # Ferramenta Genérica (fallback)
                     action.triggered.connect(lambda chk=False, title=tool["name"], desc=tool["description"]: self._open_tab(title, QLabel(desc)))
         self.tools_btn.setMenu(tools_menu)
         self.toolbar.addWidget(self.tools_btn)
 
+        # 👤 Profile Menu Button
         self.profile_btn = QToolButton()
-        self.profile_btn.setText(f"👤 {self.username}")
+        self.profile_btn.setText(f"👤 {self.username}") # Display username in profile button
         self.profile_btn.setPopupMode(QToolButton.InstantPopup)
         profile_menu = QMenu()
+        # Connect "⚙️ Configurações" to open the new UserSettingsTool
         profile_menu.addAction("⚙️ Configurações", lambda: self._open_tab("Configurações do Usuário", UserSettingsTool(self.username, self.role)))
-        profile_menu.addSeparator()
+        profile_menu.addSeparator() # Add a separator for better visual grouping
         profile_menu.addAction("🔒 Sair", self._logout)
         self.profile_btn.setMenu(profile_menu)
         self.toolbar.addWidget(self.profile_btn)
 
     def _create_main_layout(self):
         """Cria o layout dividido principal com a visualização em árvore e as abas."""
-        self.splitter = QSplitter()
+        self.splitter = QSplitter() # Allows resizing of sub-widgets
 
+        # Left Pane Widget Container (to add search bar easily)
         left_pane_widget = QWidget()
         left_pane_layout = QVBoxLayout(left_pane_widget)
-        left_pane_layout.setContentsMargins(0, 0, 0, 0)
+        left_pane_layout.setContentsMargins(0, 0, 0, 0) # Remove margins for cleaner look
 
+        # 🌳 Tree View (Left Pane) - Agora lista arquivos .xlsx
         self.tree = QTreeWidget()
         self.tree.setHeaderLabel("Arquivos do Usuário (.xlsx)")
-        self._populate_workspace_tree() # Agora lista arquivos .xlsx em user_sheets
-        self.tree.expandAll()
-        self.tree.setContextMenuPolicy(Qt.CustomContextMenu)
+        self._populate_workspace_tree() # Populate with data from Excel
+        self.tree.expandAll() # Expand all tree items by default
+        self.tree.setContextMenuPolicy(Qt.CustomContextMenu) # Enable custom context menu
         self.tree.customContextMenuRequested.connect(self._show_tree_context_menu)
-        self.tree.itemDoubleClicked.connect(self._open_file_from_tree) # Abre o arquivo selecionado
+        # Conecta duplo-clique para abrir o arquivo com a ferramenta apropriada
+        self.tree.itemDoubleClicked.connect(self._open_file_from_tree)
 
+
+        # Search Bar
         search_layout = QHBoxLayout()
         self.item_search_bar = QLineEdit()
         self.item_search_bar.setPlaceholderText("Pesquisar arquivos...")
-        self.item_search_bar.returnPressed.connect(self.handle_file_search)
+        self.item_search_bar.returnPressed.connect(self.handle_file_search) # Connect Enter key
         self.search_items_btn = QPushButton("🔍")
         self.search_items_btn.clicked.connect(self.handle_file_search)
 
         search_layout.addWidget(self.item_search_bar)
         search_layout.addWidget(self.search_items_btn)
 
-        left_pane_layout.addWidget(QLabel("Arquivos do Usuário"))
+        # Add search bar and tree to the left pane layout
+        left_pane_layout.addWidget(QLabel("Arquivos do Usuário")) # Label above search bar
         left_pane_layout.addLayout(search_layout)
         left_pane_layout.addWidget(self.tree)
 
+
+        # 📑 Tabs (Right Pane)
         self.tabs = QTabWidget()
         self.tabs.setContextMenuPolicy(Qt.CustomContextMenu)
         self.tabs.customContextMenuRequested.connect(self._show_tab_context_menu)
-        self.tabs.setTabsClosable(True)
-        self.tabs.tabCloseRequested.connect(self.tabs.removeTab)
+        self.tabs.setTabsClosable(True) # Make tabs closable by default
+        self.tabs.tabCloseRequested.connect(self.tabs.removeTab) # Connect close button to remove tab
 
+        # Welcome/Home Tab
         welcome_widget = QWidget()
         welcome_layout = QVBoxLayout()
         welcome_layout.addWidget(QLabel(f"Bem-vindo {self.username} – Papel: {self.role}"))
         welcome_widget.setLayout(welcome_layout)
         self.tabs.addTab(welcome_widget, "Início")
 
-        self.splitter.addWidget(left_pane_widget)
+        # Add widgets to the splitter
+        self.splitter.addWidget(left_pane_widget) # Add the container widget to the splitter
         self.splitter.addWidget(self.tabs)
-        self.splitter.setStretchFactor(1, 4)
+        self.splitter.setStretchFactor(1, 4) # Give more space to the tabs
 
+        # Set splitter as the central widget
         container = QWidget()
         layout = QVBoxLayout()
         layout.addWidget(self.splitter)
@@ -397,18 +427,12 @@ class TeamcenterStyleGUI(QMainWindow):
         """Popula a árvore com os arquivos .xlsx encontrados em USER_SHEETS_DIR."""
         self.tree.clear()
         
-        # Filtra para incluir apenas arquivos .xlsx e excluir db.xlsx
-        excel_files = [f for f in os.listdir(USER_SHEETS_DIR) if f.endswith('.xlsx') and f != 'db.xlsx']
+        # Filtra para incluir apenas arquivos .xlsx e excluir db.xlsx e tools.xlsx (arquivos do sistema)
+        excel_files = [f for f in os.listdir(USER_SHEETS_DIR) if f.endswith('.xlsx') and f not in ['db.xlsx', 'tools.xlsx']]
         
-        # Opcional: Adicionar uma pasta "Sistema" para db.xlsx e tools.xlsx se quisermos mostrá-los
-        # root_system = QTreeWidgetItem(["Arquivos do Sistema"])
-        # self.tree.addTopLevelItem(root_system)
-        # root_system.addChild(QTreeWidgetItem(["db.xlsx"])) # Placeholder
-        # root_system.addChild(QTreeWidgetItem(["tools.xlsx"])) # Placeholder
-
-
         if not excel_files:
-            QMessageBox.information(self, "Nenhum Arquivo Encontrado", f"Nenhum arquivo .xlsx encontrado na pasta: {USER_SHEETS_DIR}. Crie arquivos para começar!")
+            # Não exibe QMessageBox se a pasta user_sheets estiver vazia, apenas mostra uma árvore vazia
+            print(f"Nenhum arquivo .xlsx encontrado na pasta: {USER_SHEETS_DIR}.")
             return
 
         for filename in sorted(excel_files): # Ordena para exibição consistente
@@ -427,7 +451,7 @@ class TeamcenterStyleGUI(QMainWindow):
             return # Não é um item de arquivo
 
         file_name = os.path.basename(file_path)
-        tool_class = EXCEL_TOOL_MAP.get(file_name)
+        tool_class = EXCEL_TOOL_MAP.get(file_name.lower()) # Usa .lower() para corresponder ao mapeamento
 
         tab_title = f"Arquivo: {file_name}"
         # Se a aba já está aberta, apenas ativa-a
@@ -445,68 +469,26 @@ class TeamcenterStyleGUI(QMainWindow):
             excel_viewer = ExcelViewerTool(file_path=file_path)
             self._open_tab(tab_title, excel_viewer)
 
+
     def _create_mes_pcp_tool_widget(self):
-        """Cria o widget para a ferramenta MES (Apontamento Fábrica)."""
+        """Cria o widget para a ferramenta MES (Apontamento Fábrica). (Placeholder)"""
         mes_widget = QWidget()
         mes_layout = QVBoxLayout()
         mes_layout.addWidget(QLabel("<h2>MES (Apontamento Fábrica)</h2>"))
-        mes_layout.addWidget(QLabel("Inserir dados de produção, acompanhar progresso e gerenciar operações de chão de fábrica."))
+        mes_layout.addWidget(QLabel("Esta é uma ferramenta placeholder para MES. Dados de entrada/saída serão implementados aqui."))
 
         form_layout = QVBoxLayout()
-        self.mes_order_id_input = QLineEdit()
-        self.mes_order_id_input.setPlaceholderText("ID da Ordem de Produção")
-        self.mes_item_code_input = QLineEdit()
-        self.mes_item_code_input.setPlaceholderText("Código do Item")
-        self.mes_quantity_input = QLineEdit()
-        self.mes_quantity_input.setPlaceholderText("Quantidade Produzida")
-        self.mes_start_time_input = QLineEdit()
-        self.mes_start_time_input.setPlaceholderText("Hora de Início (AAAA-MM-DD HH:MM)")
-        self.mes_end_time_input = QLineEdit()
-        self.mes_end_time_input.setPlaceholderText("Hora de Término (AAAA-MM-DD HH:MM)")
-
-        submit_btn = QPushButton("Enviar Dados de Produção")
-        submit_btn.clicked.connect(self._submit_mes_data)
-
-        form_layout.addWidget(QLabel("ID da Ordem de Produção:"))
-        form_layout.addWidget(self.mes_order_id_input)
-        form_layout.addWidget(QLabel("Código do Item:"))
-        form_layout.addWidget(self.mes_item_code_input)
-        form_layout.addWidget(QLabel("Quantidade Produzida:"))
-        form_layout.addWidget(QLabel("Hora de Início:"))
-        form_layout.addWidget(self.mes_start_time_input)
-        form_layout.addWidget(QLabel("Hora de Término:"))
-        form_layout.addWidget(self.mes_end_time_input)
-        form_layout.addWidget(submit_btn)
-
+        # Exemplo de campos para MES, você os implementará de verdade depois
+        mes_layout.addWidget(QLabel("ID da Ordem de Produção:"))
+        mes_layout.addWidget(QLineEdit("ORDEM-001"))
+        mes_layout.addWidget(QLabel("Quantidade Produzida:"))
+        mes_layout.addWidget(QLineEdit("100"))
+        mes_layout.addWidget(QPushButton("Registrar Produção (Simulado)"))
+        
         mes_layout.addLayout(form_layout)
-        mes_layout.addStretch()
+        mes_layout.addStretch() # Push content to top
         mes_widget.setLayout(mes_layout)
         return mes_widget
-
-    def _submit_mes_data(self):
-        """Gerencia o envio de dados MES (placeholder)."""
-        order_id = self.mes_order_id_input.text()
-        item_code = self.mes_item_code_input.text()
-        quantity = self.mes_quantity_input.text()
-        start_time = self.mes_start_time_input.text()
-        end_time = self.mes_end_time_input.text()
-
-        if not all([order_id, item_code, quantity, start_time, end_time]):
-            QMessageBox.warning(self, "Erro de Entrada", "Todos os campos MES devem ser preenchidos.")
-            return
-
-        QMessageBox.information(self, "Dados MES Enviados",
-                                f"Dados de Produção Enviados:\n"
-                                f"ID da Ordem: {order_id}\n"
-                                f"Código do Item: {item_code}\n"
-                                f"Quantidade: {quantity}\n"
-                                f"Início: {start_time}\n"
-                                f"Término: {end_time}")
-        self.mes_order_id_input.clear()
-        self.mes_item_code_input.clear()
-        self.mes_quantity_input.clear()
-        self.mes_start_time_input.clear()
-        self.mes_end_time_input.clear()
 
     def handle_file_search(self):
         """
@@ -517,7 +499,7 @@ class TeamcenterStyleGUI(QMainWindow):
             QMessageBox.information(self, "Pesquisar", "Por favor, digite um termo de pesquisa.")
             return
 
-        excel_files = [f for f in os.listdir(USER_SHEETS_DIR) if f.endswith('.xlsx') and f != 'db.xlsx']
+        excel_files = [f for f in os.listdir(USER_SHEETS_DIR) if f.endswith('.xlsx') and f not in ['db.xlsx', 'tools.xlsx']]
         results = [f for f in excel_files if search_term in f.lower()]
         self.display_search_results_dialog(results)
 
@@ -546,10 +528,10 @@ class TeamcenterStyleGUI(QMainWindow):
             layout.addWidget(list_widget)
 
         close_btn = QPushButton("Fechar")
-        close_btn.clicked.connect(dialog.accept)
+        close_btn.clicked.connect(dialog.accept) # Close dialog on button click
         layout.addWidget(close_btn)
 
-        dialog.exec_()
+        dialog.exec_() # Show dialog modally
 
     def _open_tab(self, title, widget_instance):
         """
@@ -560,71 +542,121 @@ class TeamcenterStyleGUI(QMainWindow):
             if self.tabs.tabText(i) == title:
                 self.tabs.setCurrentIndex(i)
                 return
+        # If tab doesn't exist, add it
         self.tabs.addTab(widget_instance, title)
-        self.tabs.setCurrentIndex(self.tabs.count() - 1)
+        self.tabs.setCurrentIndex(self.tabs.count() - 1) # Switch to the newly opened tab
 
     def _open_options(self):
-        """Abre o diálogo de opções/configurações do usuário."""
+        """Opens the user options/settings dialog."""
+        # Use the already defined UserSettingsTool
         self._open_tab("Configurações do Usuário", UserSettingsTool(self.username, self.role))
 
     def _logout(self):
-        """Desconecta o usuário atual e retorna para a tela de login."""
+        """Logs out the current user and returns to the login screen."""
         confirm_logout = QMessageBox.question(self, "Confirmação de Saída", "Tem certeza de que deseja sair?",
                                               QMessageBox.Yes | QMessageBox.No)
         if confirm_logout == QMessageBox.Yes:
-            self.close()
-            self.login = LoginWindow()
-            self.login.show()
+            self.close() # Close the main application window
+            self.login = LoginWindow() # Create a new login window instance
+            self.login.show() # Show the login window
 
     def _show_tree_context_menu(self, pos):
-        """Exibe um menu de contexto para itens (arquivos) na visualização em árvore."""
+        """Displays a context menu for items (files) in the tree view."""
         item = self.tree.itemAt(pos)
         
         menu = QMenu()
 
-        # Adicionar uma opção para criar um novo arquivo .xlsx vazio, se desejado
-        # Exemplo: menu.addAction("➕ Criar Novo Arquivo .xlsx (Simulado)")
+        # Opção para criar um novo arquivo .xlsx vazio (se o usuário quiser iniciar um do zero)
+        create_new_file_action = menu.addAction("➕ Criar Novo Arquivo .xlsx")
+        create_new_file_action.triggered.connect(self._create_new_excel_file)
 
-        if item: # Se um arquivo foi clicado
+
+        if item: # If a file was clicked
             file_path = item.data(0, Qt.UserRole)
             file_name = os.path.basename(file_path)
             
             menu.addSeparator()
             menu.addAction("🔍 Abrir Arquivo", lambda: self._open_file_from_tree(item, 0))
             
-            # Opções para o StructureViewTool
-            # Se o arquivo contiver uma planilha "structure", oferecer para abrir a estrutura
+            # Opções para visualizar a estrutura se a planilha 'structure' existir no arquivo
             try:
                 wb = openpyxl.load_workbook(file_path)
                 if "structure" in wb.sheetnames:
                     menu.addAction("📊 Visualizar Estrutura", lambda: self._open_tab(f"Estrutura: {file_name}", StructureViewTool(file_path=file_path, sheet_name="structure")))
             except Exception:
                 pass # Ignora se o arquivo não puder ser lido ou não tiver a aba
-
+            
+            # Estas são ações simuladas para Renomear e Excluir.
+            # A implementação real exigiria lógica de manipulação de arquivos no disco.
             menu.addAction("✏️ Renomear Arquivo (Simulado)", lambda: QMessageBox.information(self, "Ação Simulada", f"Renomeando: {file_name} (ação simulada)"))
             menu.addAction("❌ Excluir Arquivo (Simulado)", lambda: QMessageBox.warning(self, "Ação Simulada", f"Excluindo: {file_name} (ação simulada)"))
             
-        menu.exec_(self.tree.viewport().mapToGlobal(pos))
+        menu.exec_(self.tree.viewport().mapToGlobal(pos)) # Show menu at mouse position
 
-    # _add_new_root_item e _add_new_subitem são removidos ou alterados drasticamente
-    # pois não há mais um 'workspace_data.xlsx' para adicionar items de forma genérica.
-    # A adição de dados agora ocorrerá dentro das ferramentas específicas.
+    def _create_new_excel_file(self):
+        """Abre um diálogo para criar um novo arquivo Excel vazio."""
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Criar Novo Arquivo Excel")
+        dialog_layout = QVBoxLayout(dialog)
+
+        file_name_label = QLabel("Nome do novo arquivo (.xlsx):")
+        file_name_input = QLineEdit()
+        file_name_input.setPlaceholderText("ex: meu_novo_arquivo.xlsx")
+        
+        dialog_layout.addWidget(file_name_label)
+        dialog_layout.addWidget(file_name_input)
+
+        button_box = QHBoxLayout()
+        create_btn = QPushButton("Criar")
+        cancel_btn = QPushButton("Cancelar")
+        
+        button_box.addWidget(create_btn)
+        button_box.addWidget(cancel_btn)
+        
+        dialog_layout.addLayout(button_box)
+
+        create_btn.clicked.connect(dialog.accept)
+        cancel_btn.clicked.connect(dialog.reject)
+
+        if dialog.exec_() == QDialog.Accepted:
+            new_file_name = file_name_input.text().strip()
+            if not new_file_name.endswith(".xlsx"):
+                new_file_name += ".xlsx"
+            
+            new_file_path = os.path.join(USER_SHEETS_DIR, new_file_name)
+            
+            if os.path.exists(new_file_path):
+                QMessageBox.warning(self, "Arquivo Já Existe", f"O arquivo '{new_file_name}' já existe. Por favor, escolha outro nome.")
+                return
+
+            try:
+                wb = openpyxl.Workbook()
+                ws = wb.active
+                ws.title = "Sheet1" # Default first sheet
+                wb.save(new_file_path)
+                QMessageBox.information(self, "Arquivo Criado", f"Arquivo '{new_file_name}' criado com sucesso em '{USER_SHEETS_DIR}'.")
+                self._populate_workspace_tree() # Refresh the tree view
+            except Exception as e:
+                QMessageBox.critical(self, "Erro ao Criar Arquivo", f"Erro ao criar o arquivo Excel: {e}")
+
 
     def _show_tab_context_menu(self, pos):
         """Exibe um menu de contexto para as abas no widget de abas."""
         index = self.tabs.tabBar().tabAt(pos)
-        if index < 0: return
+        if index < 0: return # No tab clicked
 
         menu = QMenu()
         menu.addAction("❌ Fechar Guia", lambda: self.tabs.removeTab(index))
+        # Ensure "Fechar Outras Guias" doesn't close the current tab if it's the only one
         if self.tabs.count() > 1:
             menu.addAction("🔁 Fechar Outras Guias", lambda: self._close_other_tabs(index))
-        if self.tabs.count() > 0:
+        if self.tabs.count() > 0: # Only show "Fechar Todas as Guias" if there are tabs
             menu.addAction("🧹 Fechar Todas as Guias", self.tabs.clear)
         menu.exec_(self.tabs.tabBar().mapToGlobal(pos))
 
     def _close_other_tabs(self, keep_index):
         """Fecha todas as abas, exceto a do índice 'keep_index'."""
+        # Iterate in reverse to avoid index issues when removing tabs
         for i in reversed(range(self.tabs.count())):
             if i != keep_index:
                 self.tabs.removeTab(i)
