@@ -1,14 +1,43 @@
-project-root/
-┣ backend/
-┃ ┣ main.py
-┃ ┣ gui.py                   # ⬅️ PyQt5 GUI launcher
-┃ ┣ templates/
-┃ ┃ ┣ login.html
-┃ ┃ ┗ dashboard.html
-┣ app/
-┃ ┣ main.xlsx
-┃ ┣ users.xlsx
-┃ ┣ modules.xlsx
-┃ ┗ permissions.xlsx
-┣ folder_structure.txt
-┗ requirements.txt
+5REV-SHEETS/
+├── client/                                     <- Pasta principal da interface PyQt5
+│   ├── excel_load.py                           <- Arquivo utilitário para ler arquivos Excel
+│   ├── gui.py                                  <- Arquivo principal da interface gráfica (PyQt5)
+│   ├── login.py                                <- Tela e lógica de login via GUI
+│   ├── session.py                              <- Gerenciador de sessão de usuário
+│   └── ui/
+│       └── tools/                              <- Pasta onde ficam todos os módulos (mod1 a mod10)
+│           ├── __init__.py                     <- (PRECISA estar presente - crie se não estiver)
+│           ├── product_data.py                 <- (mod1) Tela de cadastro de produtos
+│           ├── bom_manager.py                  <- (mod2a) Gerenciador de estrutura de produto
+│           ├── configurador.py                 <- (mod2b) Criador de tela de configuração comercial
+│           ├── colaboradores.py                <- (mod3) Tela de RH
+│           ├── items.py                        <- (mod4) Estrutura de engenharia
+│           ├── manufacturing.py                <- (mod5) Processo de manufatura
+│           ├── pcp.py                          <- (mod6) Planejamento de produção
+│           ├── estoque.py                      <- (mod7) Controle de estoque
+│           ├── financeiro.py                   <- (mod8) Tela financeira
+│           ├── pedidos.py                      <- (mod9) Tela de pedidos comerciais
+│           └── manutencao.py                   <- (mod10) Tela de manutenção de chamados
+│
+├── html/                                       <- Pasta com arquivos HTML da versão web
+│   ├── index.html                              <- Tela de login (web)
+│   └── dashboard.html                          <- Tela principal após login
+│
+├── js/                                         <- JavaScript para versão web
+│   ├── login.js                                <- Script de login
+│   └── dashboard.js                            <- Script para dashboard
+│
+├── user_sheets/                                <- Planilhas Excel com os dados reais do usuário
+│   ├── output.xlsx
+│   ├── RPI.xlsx
+│   ├── configurador.xlsx
+│   ├── colaboradores.xlsx
+│   ├── programacao.xlsx
+│   ├── estoque.xlsx
+│   ├── financeiro.xlsx
+│   ├── pedidos.xlsx
+│   └── manutencao.xlsx
+│
+├── tools.xlsx                                  <- Planilha mestre que define os módulos ativos
+├── README.md                                   <- Descrição do projeto
+└── requirements.txt                            
