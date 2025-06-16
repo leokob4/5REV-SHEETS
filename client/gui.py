@@ -2,15 +2,17 @@ import sys
 import os
 import bcrypt
 import openpyxl
-import json # Para salvar/carregar estrutura de diagramas complexos
+import json # Necessário para EngenhariaWorkflowTool (salvar/carregar JSON)
+import subprocess # Necessário para _run_create_engenharia_script
+
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QToolBar, QAction, QTabWidget, QMenu, QToolButton,
     QWidget, QVBoxLayout, QSplitter, QTreeWidget, QTreeWidgetItem,
     QLabel, QLineEdit, QPushButton, QHBoxLayout, QMessageBox, QGraphicsView,
-    QGraphicsScene, QGraphicsRectItem, QGraphicsLineItem, QDialog, QListWidget, QListWidgetItem, QTableWidget, QTableWidgetItem, QHeaderView, QInputDialog, QComboBox
+    QGraphicsScene, QGraphicsRectItem, QGraphicsLineItem, QDialog, QListWidget, QListWidgetItem, QTableWidget, QTableWidgetItem, QHeaderView, QInputDialog, QComboBox, QGraphicsTextItem # Adicionado QGraphicsTextItem
 )
 from PyQt5.QtCore import Qt, QPointF, QFileInfo
-from PyQt5.QtGui import QBrush, QPen, QColor, QFont # Importar QFont explicitamente para QGraphicsScene.addText
+from PyQt5.QtGui import QBrush, QPen, QColor, QFont # QFont é bom para QGraphicsTextItem
 
 # --- Correção para ModuleNotFoundError: No module named 'ui' ---
 # Obtém o caminho absoluto do diretório contendo gui.py
@@ -22,7 +24,7 @@ if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
 # --- Importar Módulos das Ferramentas ---
-# Garanta que esses arquivos existam em client/ui/tools/
+# Garanta que esses arquivos existam em ui/tools/
 from ui.tools.product_data import ProductDataTool
 from ui.tools.bom_manager import BomManagerTool
 from ui.tools.configurador import ConfiguradorTool
@@ -30,8 +32,8 @@ from ui.tools.colaboradores import ColaboradoresTool
 from ui.tools.items import ItemsTool
 from ui.tools.manufacturing import ManufacturingTool
 from ui.tools.pcp import PcpTool
-from ui.tools.estoque import EstoqueTool # Esta ferramenta é para o estoque_data.xlsx, não confundir com items.py usando estoque.xlsx
-from ui.tools.financeiro import FinanceiroTool
+from ui.tools.estoque import EstoqueTool
+from ui.tools.financeiro import FinanceiroTool # Corrigido: FinanceiroolTool -> FinanceiroTool
 from ui.tools.pedidos import PedidosTool
 from ui.tools.manutencao import ManutencaoTool
 from ui.tools.engenharia_data import EngenhariaDataTool 
@@ -92,7 +94,7 @@ PROTECTED_FILES = [
 os.makedirs(USER_SHEETS_DIR, exist_ok=True)
 os.makedirs(APP_SHEETS_DIR, exist_ok=True)
 
-# Itens de espaço de trabalho codificados (em um aplicativo real, viriam de um backend/banco de dados)
+# Itens de espaço de trabalho codificados (para a árvore de exemplo, antes da carga dinâmica)
 WORKSPACE_ITEMS = [
     "Demo Project - Rev A",
     "Part-001",
@@ -196,7 +198,7 @@ def load_role_permissions():
     perms = {}
     try:
         wb = openpyxl.load_workbook(DB_EXCEL_PATH)
-        sheet = wb["access"] # Assumindo que a planilha 'access' existe em db.xlsx
+        sheet = wb["access"] 
         perms = {}
         for row in sheet.iter_rows(min_row=2):
             if len(row) >= 2 and row[1].value is not None:
@@ -238,7 +240,7 @@ class LoginWindow(QWidget):
         self.password_input = QLineEdit()
         self.password_input.setPlaceholderText("Senha")
         self.password_input.setEchoMode(QLineEdit.Password)
-        self.password_input.returnPressed.connect(self.authenticate) # Conecta a tecla Enter para autenticar
+        self.password_input.returnPressed.connect(self.authenticate) 
 
         login_btn = QPushButton("Entrar")
         login_btn.clicked.connect(self.authenticate)
@@ -273,7 +275,7 @@ class LoginWindow(QWidget):
             return
 
         self.main = TeamcenterStyleGUI(user)
-        self.main.showMaximized() # Abre em tela cheia
+        self.main.showMaximized() 
         self.close() 
 
     def handle_register(self):
@@ -288,7 +290,7 @@ class LoginWindow(QWidget):
         try:
             register_user(uname, pwd)
             QMessageBox.information(self, "Registrado", f"Usuário '{uname}' registrado com sucesso com o papel 'user'.")
-            self.users = load_users_from_excel() # Recarrega usuários após o registro
+            self.users = load_users_from_excel() 
             self.username_input.clear()
             self.password_input.clear()
         except ValueError as ve:
@@ -356,11 +358,11 @@ class EngenhariaWorkflowTool(QWidget):
         control_layout.addWidget(load_btn)
         self.layout.addLayout(control_layout)
 
-        self.nodes = [] # Para rastrear nós adicionados (QGraphicsRectItem)
-        self.node_properties = {} # Para armazenar propriedades personalizadas (texto, posição)
-        self.links = [] # Para rastrear links adicionados (QGraphicsLineItem)
+        self.nodes = [] 
+        self.node_properties = {} 
+        self.links = [] 
 
-        self._populate_sheet_selector() # Popula o seletor de abas e carrega o workflow inicial
+        self._populate_sheet_selector() 
 
     def _populate_sheet_selector(self):
         """Popula o QComboBox com os nomes das planilhas do arquivo Excel."""
@@ -388,15 +390,15 @@ class EngenhariaWorkflowTool(QWidget):
                 if default_index != -1:
                     self.sheet_selector.setCurrentIndex(default_index)
                 elif sheet_names:
-                    self.sheet_selector.setCurrentIndex(0) # Seleciona a primeira sheet disponível
+                    self.sheet_selector.setCurrentIndex(0) 
                 
                 self.current_sheet_name = self.sheet_selector.currentText()
             
-            self._load_workflow_from_excel() # Carrega o workflow da aba selecionada/padrão
+            self._load_workflow_from_excel() 
 
         except Exception as e:
             QMessageBox.critical(self, "Erro ao Listar Planilhas", f"Erro ao listar planilhas em '{os.path.basename(self.file_path)}': {e}")
-            self.sheet_selector.addItem(self.DEFAULT_SHEET_NAME) # Fallback
+            self.sheet_selector.addItem(self.DEFAULT_SHEET_NAME) 
             self.current_sheet_name = self.DEFAULT_SHEET_NAME
 
     def _save_workflow_to_excel(self):
@@ -426,28 +428,24 @@ class EngenhariaWorkflowTool(QWidget):
                 else:
                     ws = wb[current_sheet_name]
             
-            # Limpa o conteúdo existente, mas mantém o cabeçalho se houver
-            if ws.max_row > 1: # Se tiver mais que 1 linha (cabeçalho + dados)
-                ws.delete_rows(2, ws.max_row) # Deleta todas as linhas de dados
+            if ws.max_row > 1: 
+                ws.delete_rows(2, ws.max_row) 
 
-            # Define os cabeçalhos da planilha para o workflow (se não existirem ou estiverem incorretos)
             workflow_headers = ["Tipo", "ID", "X", "Y", "Largura", "Altura", "Texto", "Cor", "Conexões"]
             current_excel_headers = [cell.value for cell in ws[1]] if ws.max_row > 0 else []
 
             if current_excel_headers != workflow_headers:
-                if ws.max_row > 0: # Se houver cabeçalhos existentes, os apaga
+                if ws.max_row > 0: 
                     ws.delete_rows(1)
-                ws.insert_rows(1) # Insere uma nova primeira linha
+                ws.insert_rows(1) 
                 ws.append(workflow_headers)
-            elif not current_excel_headers: # Se a planilha estiver completamente vazia
+            elif not current_excel_headers: 
                 ws.append(workflow_headers)
 
-
-            # Salvar nós
             for i, node_item in enumerate(self.nodes):
-                node_id = f"node_{i}" # Um ID simples para cada nó
+                node_id = f"node_{i}" 
                 text_item = None
-                for item in self.scene.items(node_item.boundingRect()): # Encontra o QGraphicsTextItem associado
+                for item in self.scene.items(node_item.boundingRect()): 
                     if isinstance(item, QGraphicsTextItem):
                         text_item = item
                         break
@@ -457,21 +455,14 @@ class EngenhariaWorkflowTool(QWidget):
                 node_y = node_item.rect().y()
                 node_width = node_item.rect().width()
                 node_height = node_item.rect().height()
-                # Cores precisam ser convertidas de QBrush para string (hex ou nome)
-                node_color = node_item.brush().color().name() # Ex: "#ADD8E6"
+                node_color = node_item.brush().color().name() 
                 
-                # Para as conexões, precisaria de uma maneira de identificar os links conectados a este nó.
-                # Por simplicidade, aqui é um stub.
                 connections = [] 
                 
                 ws.append(["Node", node_id, node_x, node_y, node_width, node_height, node_text, node_color, json.dumps(connections)])
 
-            # Salvar links (conceitual, exigiria rastrear nós de origem/destino do link)
             for i, link_item in enumerate(self.links):
                 link_id = f"link_{i}"
-                # Exemplo: Se você tivesse rastreado os IDs dos nós conectados:
-                # source_node_id = link_item.source_node.id (precisaria ser implementado)
-                # dest_node_id = link_item.dest_node.id (precisaria ser implementado)
                 ws.append(["Link", link_id, "", "", "", "", "", "", json.dumps({"source": "id_origem", "target": "id_destino"})])
 
             wb.save(self.file_path)
@@ -483,7 +474,7 @@ class EngenhariaWorkflowTool(QWidget):
         """
         Carrega um diagrama de fluxo de trabalho da planilha Excel selecionada.
         """
-        self._clear_diagram() # Limpa o diagrama atual antes de carregar
+        self._clear_diagram() 
         current_sheet_name = self.sheet_selector.currentText()
         if not current_sheet_name or not os.path.exists(self.file_path):
             QMessageBox.warning(self, "Erro", "Arquivo ou planilha não selecionados/encontrados para carregar.")
@@ -497,13 +488,12 @@ class EngenhariaWorkflowTool(QWidget):
 
             sheet = wb[current_sheet_name]
             
-            # Mapeia cabeçalhos para índices para carregamento flexível
             headers = [cell.value for cell in sheet[1]] if sheet.max_row > 0 else []
             header_map = {h: idx for idx, h in enumerate(headers)}
 
-            loaded_nodes = {} # Para mapear IDs de nó de volta aos QGraphicsRectItem
+            loaded_nodes = {} 
 
-            for row_idx in range(2, sheet.max_row + 1): # Começa da segunda linha (dados)
+            for row_idx in range(2, sheet.max_row + 1): 
                 row_values = [cell.value for cell in sheet[row_idx]]
                 row_type = row_values[header_map.get("Tipo")] if "Tipo" in header_map and header_map["Tipo"] < len(row_values) else None
 
@@ -514,18 +504,20 @@ class EngenhariaWorkflowTool(QWidget):
                     width = row_values[header_map.get("Largura")] if "Largura" in header_map and header_map["Largura"] < len(row_values) else 100
                     height = row_values[header_map.get("Altura")] if "Altura" in header_map and header_map["Altura"] < len(row_values) else 50
                     text = row_values[header_map.get("Texto")] if "Texto" in header_map and header_map["Texto"] < len(row_values) else ""
+
+                    text = str(text) if text is not None else "" 
+
                     color_name = row_values[header_map.get("Cor")] if "Cor" in header_map and header_map["Cor"] < len(row_values) else "lightblue"
 
                     if node_id:
                         node_rect = self.scene.addRect(x, y, width, height, QPen(Qt.black), QBrush(QColor(color_name)))
-                        node_text_item = self.scene.addText(str(text))
-                        node_text_item.setPos(x + 5, y + 15) # Ajuste de posição para o texto dentro do nó
+                        node_text_item = self.scene.addText(text) 
+                        node_text_item.setPos(x + 5, y + 15) 
                         
                         self.nodes.append(node_rect)
-                        loaded_nodes[node_id] = node_rect # Armazena para referências de link
+                        loaded_nodes[node_id] = node_rect 
 
                 elif row_type == "Link":
-                    # Carregar links: exigiria referenciar nós já criados
                     link_data_str = row_values[header_map.get("Conexões")] if "Conexões" in header_map and header_map["Conexões"] < len(row_values) else "{}"
                     try:
                         link_data = json.loads(link_data_str)
@@ -536,7 +528,6 @@ class EngenhariaWorkflowTool(QWidget):
                         target_node = loaded_nodes.get(target_id)
 
                         if source_node and target_node:
-                            # Adicionar a linha (precisaria de lógica para calcular os pontos de conexão exatos)
                             pen = QPen(Qt.darkGray, 2)
                             line = self.scene.addLine(
                                 source_node.rect().x() + source_node.rect().width(), source_node.rect().y() + source_node.rect().height() / 2,
@@ -554,15 +545,12 @@ class EngenhariaWorkflowTool(QWidget):
 
     def _add_sample_diagram_elements(self):
         """Adiciona alguns elementos de exemplo à cena do diagrama ao iniciar."""
-        # Task nodes
         node1 = self.scene.addRect(50, 50, 100, 50, QPen(Qt.black), QBrush(QColor("lightblue")))
         node2 = self.scene.addRect(200, 150, 100, 50, QPen(Qt.black), QBrush(QColor("lightgreen")))
         node3 = self.scene.addRect(350, 50, 100, 50, QPen(Qt.black), QBrush(QColor("lightcoral")))
 
-        # Corrigido: QGraphicsScene.addText agora aceita o texto, fonte (opcional) e depois a posição.
-        # Estamos usando setPos para maior clareza e flexibilidade.
         text_item1 = self.scene.addText("Fase de Design")
-        text_item1.setPos(50 + 5, 50 + 15) # Ajusta posição para dentro do nó
+        text_item1.setPos(50 + 5, 50 + 15) 
 
         text_item2 = self.scene.addText("Revisão (Aprovado)")
         text_item2.setPos(200 + 5, 150 + 15)
@@ -570,9 +558,8 @@ class EngenhariaWorkflowTool(QWidget):
         text_item3 = self.scene.addText("Preparação da Produção")
         text_item3.setPos(350 + 5, 50 + 15)
 
-        self.nodes.extend([node1, node2, node3]) # Adiciona os nódes à lista
+        self.nodes.extend([node1, node2, node3]) 
 
-        # Links/Arrows
         pen = QPen(Qt.darkGray)
         pen.setWidth(2)
         link1 = self.scene.addLine(node1.x() + node1.rect().width(), node1.y() + node1.rect().height() / 2,
@@ -587,10 +574,10 @@ class EngenhariaWorkflowTool(QWidget):
         x = 10 + len(self.nodes) * 120 
         y = 10 + (len(self.nodes) % 3) * 70
         
-        node = self.scene.addRect(x, y, 100, 50, QPen(Qt.black), QBrush(QColor("#FFD700"))) # Cor ouro
+        node = self.scene.addRect(x, y, 100, 50, QPen(Qt.black), QBrush(QColor("#FFD700"))) 
         
         text_item = self.scene.addText(f"Nova Tarefa {len(self.nodes) + 1}")
-        text_item.setPos(x + 5, y + 15) # Posiciona o texto dentro do nó
+        text_item.setPos(x + 5, y + 15) 
         
         self.nodes.append(node)
         self.view.centerOn(node)
@@ -598,11 +585,6 @@ class EngenhariaWorkflowTool(QWidget):
     def _add_dependency_link(self):
         """
         Prompts user to select two nodes to link. (Conceptual, requires selection logic).
-        Para uma implementação completa:
-        1. Permitir que o usuário clique no primeiro nó.
-        2. Armazenar o primeiro nó.
-        3. Permitir que o usuário clique no segundo nó.
-        4. Desenhar uma linha entre os centros ou bordas dos dois nós.
         """
         QMessageBox.information(self, "Adicionar Ligação", "Clique em dois nós de tarefa para criar uma ligação. (Lógica de seleção a ser implementada na próxima etapa)")
 
@@ -618,238 +600,8 @@ class EngenhariaWorkflowTool(QWidget):
 class DbHeadersUpdaterTool(QWidget):
     """
     Ferramenta para atualizar a planilha 'db_db' em db.xlsx com cabeçalhos de todos
-    os arquivos Excel nas pastas user_sheets e app_sheets.
+    os arquivos Excel nas pastas user_sheets e app_sheets, preservando descrições existentes.
     """
-    # Mapeamento de descrições para a coluna 'descr_variavel'
-    DESCRIPTION_MAP = {
-        ('user_sheets/RPI.xlsx', 'id_rota'): 'Identificador único para a rota de produção.',
-        ('user_sheets/RPI.xlsx', 'part_number'): 'Número de identificação da peça ou item associado à rota.',
-        ('user_sheets/RPI.xlsx', 'description'): 'Descrição detalhada da rota ou do item principal da rota.',
-        ('user_sheets/RPI.xlsx', 'recurso'): 'Recurso (máquina, posto de trabalho) utilizado na operação da rota.',
-        ('user_sheets/RPI.xlsx', 'operacao'): 'Etapa específica do processo de produção dentro da rota.',
-        ('user_sheets/RPI.xlsx', 'tempo_ciclo'): 'Tempo necessário para completar um ciclo de produção em uma operação.',
-        ('user_sheets/RPI.xlsx', 'quantidade_por_ciclo'): 'Quantidade de unidades produzidas em um ciclo de operação.',
-        ('user_sheets/RPI.xlsx', 'observacoes'): 'Campo para notas ou informações adicionais sobre a rota.',
-        ('user_sheets/RPI.xlsx', 'deposito_padrao'): 'Depósito principal para matéria-prima ou componentes desta rota.',
-        ('user_sheets/RPI.xlsx', 'ferramenta'): 'Nome ou código da ferramenta específica utilizada na operação da rota.',
-        ('user_sheets/RPI.xlsx', 'deposito_ferramenta'): 'Depósito onde a ferramenta utilizada nesta rota está armazenada.',
-        ('user_sheets/RPI.xlsx', 'endereco_ferramenta'): 'Endereço físico da ferramenta dentro do depósito.',
-        ('user_sheets/RPI.xlsx', 'recurso_tipo'): 'Categoria do recurso (ex: Máquina, Posto de Trabalho, Mão de Obra indireta).',
-        ('user_sheets/RPI.xlsx', 'operacao_sequencia'): 'Ordem sequencial da operação dentro da rota de produção.',
-        ('user_sheets/RPI.xlsx', 'operacao_instrucoes'): 'Instruções detalhadas ou procedimento padrão para a execução da operação.',
-        ('user_sheets/RPI.xlsx', 'set_up_time'): 'Tempo de preparação (ajuste, configuração) necessário antes da operação iniciar.',
-        ('user_sheets/RPI.xlsx', 'down_time_estimado'): 'Tempo de inatividade estimado para a operação ou recurso.',
-        ('user_sheets/RPI.xlsx', 'criterio_qualidade'): 'Padrões ou critérios para inspeção de qualidade nesta operação.',
-        ('user_sheets/RPI.xlsx', 'tolerancia_qualidade'): 'Variação aceitável ou limite de tolerância para o critério de qualidade.',
-        ('user_sheets/RPI.xlsx', 'necessidade_mao_obra'): 'Número de operadores ou colaboradores necessários para a operação.',
-        ('user_sheets/RPI.xlsx', 'habilidade_necessaria'): 'Qualificação ou tipo de habilidade exigida para o operador nesta operação.',
-        ('user_sheets/RPI.xlsx', 'custo_hora_recurso'): 'Custo operacional por hora do recurso utilizado na operação.',
-        ('user_sheets/RPI.xlsx', 'custo_hora_mao_obra'): 'Custo por hora da mão de obra alocada à operação.',
-        ('user_sheets/RPI.xlsx', 'lote_minimo_producao'): 'Tamanho mínimo de lote para esta rota de produção.',
-        ('user_sheets/RPI.xlsx', 'versao_rota'): 'Número da versão ou revisão da rota de produção.',
-        ('user_sheets/RPI.xlsx', 'data_ultima_revisao_rota'): 'Data da última alteração ou revisão da rota de produção.',
-        ('user_sheets/RPI.xlsx', 'responsavel_revisao_rota'): 'Colaborador responsável pela última revisão da rota.',
-        ('user_sheets/RPI.xlsx', 'custo_total_rota_estimado'): 'Custo total estimado para completar toda a rota de produção.',
-        ('user_sheets/RPI.xlsx', 'tempo_total_rota_estimado'): 'Tempo total estimado para completar toda a rota de produção.',
-        ('user_sheets/colaboradores.xlsx', 'id_colab'): 'Identificador único do colaborador.',
-        ('user_sheets/colaboradores.xlsx', 'matricula_colab'): 'Número de matrícula do colaborador na empresa.',
-        ('user_sheets/colaboradores.xlsx', 'nome_colab'): 'Nome completo do colaborador.',
-        ('user_sheets/colaboradores.xlsx', 'data_nasc'): 'Data de nascimento do colaborador.',
-        ('user_sheets/colaboradores.xlsx', 'data_contrat'): 'Data de contratação do colaborador.',
-        ('user_sheets/colaboradores.xlsx', 'data_disp'): 'Data em que o colaborador estará disponível para novas tarefas/projetos.',
-        ('user_sheets/colaboradores.xlsx', 'setor_colab'): 'Setor ou departamento ao qual o colaborador pertence.',
-        ('user_sheets/colaboradores.xlsx', 'recurso_colab'): 'Recurso (máquina, ferramenta) principal associado ao colaborador (se aplicável).',
-        ('user_sheets/colaboradores.xlsx', 'enabled_colab'): 'Status de habilitação do colaborador no sistema (Ativo/Inativo).',
-        ('user_sheets/colaboradores.xlsx', 'cpf'): 'Número de Cadastro de Pessoa Física (CPF) do colaborador.',
-        ('user_sheets/colaboradores.xlsx', 'endereco'): 'Endereço residencial completo do colaborador.',
-        ('user_sheets/colaboradores.xlsx', 'telefone'): 'Número de telefone para contato do colaborador.',
-        ('user_sheets/colaboradores.xlsx', 'email'): 'Endereço de e-mail profissional ou pessoal do colaborador.',
-        ('user_sheets/colaboradores.xlsx', 'cargo'): 'Cargo ou função atual do colaborador na empresa.',
-        ('user_sheets/colaboradores.xlsx', 'departamento'): 'Departamento principal do colaborador.',
-        ('user_sheets/colaboradores.xlsx', 'data_contratacao'): 'Data formal de contratação do colaborador (reafirmação de data_contrat).',
-        ('user_sheets/colaboradores.xlsx', 'status_contrato'): 'Status atual do contrato de trabalho (Ativo, Férias, Afastado, Demitido).',
-        ('user_sheets/colaboradores.xlsx', 'salario_base'): 'Valor do salário base do colaborador.',
-        ('user_sheets/colaboradores.xlsx', 'horas_trabalho_semanais'): 'Número de horas de trabalho semanais previstas para o colaborador.',
-        ('user_sheets/colaboradores.xlsx', 'habilidades_principais'): 'Lista de habilidades ou qualificações principais do colaborador.',
-        ('user_sheets/colaboradores.xlsx', 'data_ultima_avaliacao'): 'Data da última avaliação de desempenho ou performance do colaborador.',
-        ('user_sheets/colaboradores.xlsx', 'supervisor'): 'Nome ou ID do supervisor direto do colaborador.',
-        ('user_sheets/colaboradores.xlsx', 'turno_trabalho'): 'Turno de trabalho atribuído ao colaborador.',
-        ('user_sheets/colaboradores.xlsx', 'custo_hora_colaborador'): 'Custo por hora da mão de obra do colaborador.',
-        ('user_sheets/colaboradores.xlsx', 'motivo_saida'): 'Motivo do desligamento ou saída do colaborador (se aplicável).',
-        ('user_sheets/configurador.xlsx', 'id_configurador'): 'Identificador único de um parâmetro ou configuração do sistema.',
-        ('user_sheets/configurador.xlsx', 'part_number'): 'Número da peça ou item associado a esta configuração (se aplicável).',
-        ('user_sheets/configurador.xlsx', 'description'): 'Descrição geral da configuração ou parâmetro.',
-        ('user_sheets/configurador.xlsx', 'config_desc'): 'Descrição específica do valor ou comportamento da configuração.',
-        ('user_sheets/configurador.xlsx', 'config_type'): 'Tipo de configuração (ex: numérico, texto, booleano, lista).',
-        ('user_sheets/configurador.xlsx', 'ID Config'): 'Identificador da configuração (redundante com id_configurador, se for o mesmo conceito).',
-        ('user_sheets/configurador.xlsx', 'Nome Config'): 'Nome ou título descritivo da configuração/parâmetro.',
-        ('user_sheets/configurador.xlsx', 'Opção 1'): 'Primeira opção de valor para a configuração (para tipos de lista ou booleanos).',
-        ('user_sheets/configurador.xlsx', 'Opção 2'): 'Segunda opção de valor para a configuração.',
-        ('user_sheets/configurador.xlsx', 'Item Associado'): 'Item específico ao qual esta configuração se aplica (se não for global).',
-        ('user_sheets/db.xlsx', 'id_item'): 'Identificador único para cada item cadastrado (produto, matéria-prima, componente).',
-        ('user_sheets/db.xlsx', 'nome_item'): 'Nome comercial ou descritivo do item.',
-        ('user_sheets/db.xlsx', 'descricao_detalhada_item'): 'Descrição completa e detalhada das características do item.',
-        ('user_sheets/db.xlsx', 'tipo_item'): 'Classificação do item (ex: Matéria-prima, Componente, Produto Acabado, Embalagem).',
-        ('user_sheets/db.xlsx', 'unidade_medida_padrao'): 'Unidade de medida padrão para o item (ex: KG, UN, M).',
-        ('user_sheets/db.xlsx', 'peso_unitario'): 'Peso de uma única unidade do item.',
-        ('user_sheets/db.xlsx', 'volume_unitario'): 'Volume ocupado por uma única unidade do item.',
-        ('user_sheets/db.xlsx', 'custo_padrao_unitario'): 'Custo unitário estimado ou padrão para o item.',
-        ('user_sheets/db.xlsx', 'custo_medio_unitario'): 'Custo unitário médio ponderado do item em estoque.',
-        ('user_sheets/db.xlsx', 'fornecedor_principal'): 'Nome do fornecedor principal para este item.',
-        ('user_sheets/db.xlsx', 'marca_item'): 'Marca comercial do item (se aplicável).',
-        ('user_sheets/db.xlsx', 'categoria_item'): 'Categoria de classificação do item (ex: Eletrônicos, Metais, Plásticos).',
-        ('user_sheets/db.xlsx', 'vida_util_estimada'): 'Vida útil estimada do item em dias ou meses (para perecíveis ou com obsolescência).',
-        ('user_sheets/db.xlsx', 'data_cadastro_item'): 'Data em que o item foi cadastrado no sistema.',
-        ('user_sheets/db.xlsx', 'status_item'): 'Status atual do item (ex: Ativo, Obsoleto, Descontinuado).',
-        ('user_sheets/db.xlsx', 'historico_precos_compra'): 'Referência ou resumo do histórico de preços de compra do item.',
-        ('user_sheets/db.xlsx', 'foto_url_item'): 'URL para uma imagem ou foto do item.',
-        ('user_sheets/db.xlsx', 'codigo_barras'): 'Código de barras associado ao item para leitura automatizada.',
-        ('user_sheets/db.xlsx', 'dados_tecnicos_adicionais'): 'Campo para dados técnicos adicionais em formato livre (JSON, texto).',
-        ('user_sheets/db.xlsx', 'prazo_validade_dias'): 'Prazo de validade do item em dias a partir da fabricação/compra.',
-        ('user_sheets/estoque.xlsx', 'id_movimentacao'): 'Identificador único de cada transação de movimentação de estoque.',
-        ('user_sheets/estoque.xlsx', 'data_movimentacao'): 'Data em que a movimentação de estoque ocorreu.',
-        ('user_sheets/estoque.xlsx', 'id_item'): 'Identificador do item que foi movimentado.',
-        ('user_sheets/estoque.xlsx', 'tipo_movimentacao'): 'Tipo de transação de estoque (Ex: Entrada por Compra, Saída por Venda, Transferência).',
-        ('user_sheets/estoque.xlsx', 'quantidade_movimentada'): 'Quantidade do item que foi movimentada.',
-        ('user_sheets/estoque.xlsx', 'deposito_origem'): 'Depósito de onde o item foi movimentado (para saídas e transferências).',
-        ('user_sheets/estoque.xlsx', 'deposito_destino'): 'Depósito para onde o item foi movimentado (para entradas e transferências).',
-        ('user_sheets/estoque.xlsx', 'lote_item'): 'Número do lote específico do item movimentado (para rastreabilidade).',
-        ('user_sheets/estoque.xlsx', 'validade_lote'): 'Data de validade do lote específico do item.',
-        ('user_sheets/estoque.xlsx', 'custo_unitario_movimentacao'): 'Custo unitário do item no momento desta movimentação.',
-        ('user_sheets/estoque.xlsx', 'referencia_documento'): 'Número ou ID do documento que originou a movimentação (ex: Ordem de Compra, Nota Fiscal).',
-        ('user_sheets/estoque.xlsx', 'responsavel_movimentacao'): 'Colaborador responsável pela execução da movimentação de estoque.',
-        ('user_sheets/estoque.xlsx', 'saldo_final_deposito'): 'Saldo de estoque do item no depósito após a conclusão da movimentação.',
-        ('user_sheets/estoque.xlsx', 'motivo_ajuste'): 'Motivo específico para um ajuste de estoque (ex: inventário, quebra, furto).',
-        ('user_sheets/estoque.xlsx', 'status_inspecao_recebimento'): 'Status da inspeção de qualidade no momento do recebimento (Aprovado, Reprovado).',
-        ('user_sheets/estoque.xlsx', 'posicao_estoque_fisica'): 'Localização física detalhada do item dentro do depósito (corredor, prateleira).',
-        ('user_sheets/estoque.xlsx', 'reserva_para_ordem_producao'): 'ID da Ordem de Produção para a qual este item está reservado.',
-        ('user_sheets/estoque.xlsx', 'reserva_para_pedido_venda'): 'ID do Pedido de Venda para o qual este item está reservado.',
-        ('user_sheets/estoque.xlsx', 'estoque_em_transito'): 'Quantidade de item que foi expedida mas ainda não foi recebida no destino.',
-        ('user_sheets/estoque.xlsx', 'estoque_disponivel_para_venda'): 'Quantidade de item que pode ser vendida ou utilizada imediatamente.',
-        ('user_sheets/financeiro.xlsx', 'id_lancamento'): 'Identificador único para cada lançamento financeiro.',
-        ('user_sheets/financeiro.xlsx', 'data_lancamento'): 'Data em que o lançamento financeiro ocorreu ou foi registrado.',
-        ('user_sheets/financeiro.xlsx', 'tipo_lancamento'): 'Classificação do lançamento como Receita ou Despesa.',
-        ('user_sheets/financeiro.xlsx', 'descricao_lancamento'): 'Descrição detalhada do lançamento financeiro.',
-        ('user_sheets/financeiro.xlsx', 'valor_lancamento'): 'O valor monetário do lançamento.',
-        ('user_sheets/financeiro.xlsx', 'moeda'): 'A moeda em que o valor do lançamento está expresso.',
-        ('user_sheets/financeiro.xlsx', 'conta_contabil'): 'Conta contábil associada ao lançamento.',
-        ('user_sheets/financeiro.xlsx', 'centro_custo'): 'Centro de custo ou centro de lucro relacionado ao lançamento.',
-        ('user_sheets/financeiro.xlsx', 'id_referencia_origem'): 'ID do documento ou transação que originou o lançamento (ex: id_pedido, id_nota_fiscal).',
-        ('user_sheets/financeiro.xlsx', 'status_pagamento'): 'Status do pagamento (Pago, Aberto, Atrasado, Parcial).',
-        ('user_sheets/financeiro.xlsx', 'data_vencimento'): 'Data de vencimento para pagamentos ou data esperada para recebimentos.',
-        ('user_sheets/financeiro.xlsx', 'data_pagamento'): 'Data em que o pagamento foi efetuado ou o recebimento foi concretizado.',
-        ('user_sheets/financeiro.xlsx', 'meio_pagamento'): 'Forma como o pagamento foi realizado (ex: Boleto, Pix, Cartão de Crédito).',
-        ('user_sheets/financeiro.xlsx', 'banco_origem_destino'): 'Informações do banco de origem ou destino da transação.',
-        ('user_sheets/financeiro.xlsx', 'observacoes_financeiras'): 'Campo para observações adicionais relacionadas ao lançamento financeiro.',
-        ('user_sheets/financeiro.xlsx', 'imposto_valor'): 'Valor do imposto incidente sobre o lançamento.',
-        ('user_sheets/financeiro.xlsx', 'imposto_tipo'): 'Tipo de imposto (ex: ICMS, IPI, PIS/COFINS).',
-        ('user_sheets/financeiro.xlsx', 'fornecedor_cliente_associado'): 'ID do fornecedor ou cliente associado a este lançamento.',
-        ('user_sheets/financeiro.xlsx', 'conciliado_banco'): 'Indica se o lançamento foi conciliado com o extrato bancário (Sim/Não).',
-        ('user_sheets/financeiro.xlsx', 'saldo_conta'): 'Saldo da conta financeira após o lançamento (calculado).',
-        ('user_sheets/manutencao.xlsx', 'id_ordem_manutencao'): 'Identificador único de cada ordem de manutenção.',
-        ('user_sheets/manutencao.xlsx', 'id_ativo_equipamento'): 'Identificador do ativo ou equipamento que necessita de manutenção.',
-        ('user_sheets/manutencao.xlsx', 'tipo_manutencao'): 'Classificação da manutenção (Preventiva, Corretiva, Preditiva).',
-        ('user_sheets/manutencao.xlsx', 'data_solicitacao'): 'Data em que a manutenção foi solicitada ou gerada.',
-        ('user_sheets/manutencao.xlsx', 'data_inicio_manutencao'): 'Data e hora de início real da manutenção.',
-        ('user_sheets/manutencao.xlsx', 'data_fim_manutencao'): 'Data e hora de fim real da manutenção.',
-        ('user_sheets/manutencao.xlsx', 'descricao_problema'): 'Descrição do problema que motivou a manutenção.',
-        ('user_sheets/manutencao.xlsx', 'acoes_executadas'): 'Descrição das ações tomadas para realizar a manutenção.',
-        ('user_sheets/manutencao.xlsx', 'pecas_substituidas'): 'Lista ou descrição das peças que foram substituídas na manutenção.',
-        ('user_sheets/manutencao.xlsx', 'custo_pecas_manutencao'): 'Custo total das peças utilizadas na manutenção.',
-        ('user_sheets/manutencao.xlsx', 'horas_mao_obra_manutencao'): 'Total de horas de mão de obra dedicadas à manutenção.',
-        ('user_sheets/manutencao.xlsx', 'responsavel_manutencao'): 'Colaborador ou equipe responsável pela execução da manutenção.',
-        ('user_sheets/manutencao.xlsx', 'status_manutencao'): 'Status atual da ordem de manutenção (Programada, Em Andamento, Concluída).',
-        ('user_sheets/manutencao.xlsx', 'proxima_manutencao_programada'): 'Data da próxima manutenção agendada para este ativo/equipamento.',
-        ('user_sheets/manutencao.xlsx', 'horimetro_leitura'): 'Leitura do horímetro do equipamento no momento da manutenção (se aplicável).',
-        ('user_sheets/manutencao.xlsx', 'km_leitura'): 'Leitura do hodômetro do equipamento em KM (se aplicável a veículos).',
-        ('user_sheets/manutencao.xlsx', 'observacoes_manutencao'): 'Campo para observações adicionais sobre a manutenção.',
-        ('user_sheets/manutencao.xlsx', 'falha_causa_raiz'): 'Causa raiz identificada para a falha do equipamento.',
-        ('user_sheets/manutencao.xlsx', 'criticidade_ativo'): 'Nível de criticidade do ativo (ex: Alta, Média, Baixa) para operações.',
-        ('user_sheets/manutencao.xlsx', 'anexo_documentacao_manutencao'): 'Link ou referência para documentação, manuais, ou anexos da manutenção.',
-        ('user_sheets/output.xlsx', 'id'): 'Identificador único do item em estoque ou cadastro.',
-        ('user_sheets/output.xlsx', 'part_number'): 'Número da peça ou código do item.',
-        ('user_sheets/output.xlsx', 'description'): 'Descrição do item.',
-        ('user_sheets/output.xlsx', 'unidade_medida_compra'): 'Unidade de medida utilizada ao comprar o item.',
-        ('user_sheets/output.xlsx', 'unidade_medida_consumo'): 'Unidade de medida utilizada ao consumir/expedir o item.',
-        ('user_sheets/output.xlsx', 'deposito_padrao'): 'Depósito principal onde o item é geralmente armazenado.',
-        ('user_sheets/output.xlsx', 'endereco_padrao'): 'Endereço padrão do item dentro do depósito.',
-        ('user_sheets/output.xlsx', 'quantidade'): 'Quantidade total atual do item em estoque (soma de todos os locais).',
-        ('user_sheets/output.xlsx', 'quantidade_comprada'): 'Quantidade total acumulada do item que foi comprada.',
-        ('user_sheets/output.xlsx', 'quantidade_reservada'): 'Quantidade do item que está reservada para ordens de produção ou venda.',
-        ('user_sheets/output.xlsx', 'grupo'): 'Classificação do item por grupo (ex: eletrônicos, mecânicos).',
-        ('user_sheets/output.xlsx', 'quantidade_disponivel'): 'Quantidade do item disponível para uso ou venda (quantidade - quantidade_reservada).',
-        ('user_sheets/output.xlsx', 'estoque_minimo'): 'Nível mínimo de estoque desejado para o item.',
-        ('user_sheets/output.xlsx', 'estoque_maximo'): 'Nível máximo de estoque desejado para o item.',
-        ('user_sheets/output.xlsx', 'ponto_de_pedido'): 'Nível de estoque que aciona um novo pedido de compra/produção.',
-        ('user_sheets/output.xlsx', 'lead_time_reposicao_dias'): 'Tempo em dias para o item ser reposto no estoque.',
-        ('user_sheets/output.xlsx', 'custo_unitario_medio'): 'Custo unitário médio ponderado do item em estoque.',
-        ('user_sheets/output.xlsx', 'valor_total_estoque'): 'Valor monetário total do item em estoque.',
-        ('user_sheets/output.xlsx', 'tipo_item'): 'Classificação do item (ex: matéria-prima, componente, produto acabado).',
-        ('user_sheets/output.xlsx', 'fornecedor_principal_id'): 'Identificador do fornecedor principal do item.',
-        ('user_sheets/output.xlsx', 'data_ultima_compra'): 'Data da última vez que o item foi comprado.',
-        ('user_sheets/output.xlsx', 'data_ultima_saida'): 'Data da última vez que o item saiu do estoque.',
-        ('user_sheets/output.xlsx', 'status_item'): 'Status do item no sistema (ativo, obsoleto, descontinuado).',
-        ('user_sheets/output.xlsx', 'codigo_barras'): 'Código de barras do item para leitura.;',
-        ('user_sheets/output.xlsx', 'data_validade'): 'Data de validade do item (se perecível).',
-        ('user_sheets/producao.xlsx', 'id_producao_finalizada'): 'Identificador único para cada registro de produção finalizada.',
-        ('user_sheets/producao.xlsx', 'id_ordem_producao'): 'Identificador da ordem de produção à qual este registro se refere.',
-        ('user_sheets/producao.xlsx', 'part_number_produzido'): 'Número da peça ou código do produto que foi produzido.',
-        ('user_sheets/producao.xlsx', 'quantidade_produzida'): 'Quantidade de itens que foram produzidos e finalizados.',
-        ('user_sheets/producao.xlsx', 'unidade_medida_produzida'): 'Unidade de medida para a quantidade produzida.',
-        ('user_sheets/producao.xlsx', 'data_producao'): 'Data em que a produção foi finalizada.',
-        ('user_sheets/producao.xlsx', 'hora_inicio_producao'): 'Hora de início da produção.',
-        ('user_sheets/producao.xlsx', 'hora_fim_producao'): 'Hora de fim da produção.',
-        ('user_sheets/producao.xlsx', 'responsavel_producao'): 'Colaborador responsável pela finalização da produção.',
-        ('user_sheets/producao.xlsx', 'lote_producao_gerado'): 'Número do lote gerado para os itens produzidos.',
-        ('user_sheets/producao.xlsx', 'quantidade_refugada'): 'Quantidade de itens que foram descartados ou não passaram no controle de qualidade.',
-        ('user_sheets/producao.xlsx', 'motivo_refugo'): 'Motivo específico pelo qual os itens foram refugados.',
-        ('user_sheets/producao.xlsx', 'custo_real_producao_unitario'): 'Custo real unitário para produzir o item.',
-        ('user_sheets/producao.xlsx', 'destino_estoque'): 'Depósito para onde os itens produzidos foram encaminhados.',
-        ('user_sheets/producao.xlsx', 'status_qualidade_lote'): 'Status de qualidade do lote produzido (Aprovado, Reprovado, Retrabalho).',
-        ('user_sheets/producao.xlsx', 'tempo_total_operacional'): 'Tempo total gasto nas operações de produção.',
-        ('user_sheets/producao.xlsx', 'identificacao_maquina_utilizada'): 'Identificador da máquina principal utilizada na produção.',
-        ('user_sheets/producao.xlsx', 'observacoes_producao'): 'Campo para observações adicionais sobre o processo ou resultado da produção.',
-        ('user_sheets/producao.xlsx', 'sequencia_operacao_concluida'): 'A última operação da rota que foi concluída para este registro de produção.',
-        ('user_sheets/producao.xlsx', 'consumo_materiais_real'): 'Informações sobre o consumo real de matérias-primas na produção.',
-        ('user_sheets/pedidos.xlsx', 'id_pedido'): 'Identificador único para cada pedido (compra ou venda).',
-        ('user_sheets/pedidos.xlsx', 'tipo_pedido'): 'Classificação do pedido (Compra ou Venda).',
-        ('user_sheets/pedidos.xlsx', 'data_emissao_pedido'): 'Data em que o pedido foi emitido ou registrado.',
-        ('user_sheets/pedidos.xlsx', 'id_cliente_fornecedor'): 'Identificador do cliente (para pedido de venda) ou fornecedor (para pedido de compra).',
-        ('user_sheets/pedidos.xlsx', 'nome_cliente_fornecedor'): 'Nome completo do cliente ou razão social do fornecedor.',
-        ('user_sheets/pedidos.xlsx', 'status_pedido'): 'Status atual do pedido (Aberto, Em Processamento, Atendido, Cancelado).',
-        ('user_sheets/pedidos.xlsx', 'data_entrega_prevista'): 'Data de entrega prevista para o pedido.',
-        ('user_sheets/pedidos.xlsx', 'data_entrega_real'): 'Data em que o pedido foi efetivamente entregue ou recebido.',
-        ('user_sheets/pedidos.xlsx', 'valor_total_pedido'): 'Valor monetário total do pedido.',
-        ('user_sheets/pedidos.xlsx', 'condicao_pagamento'): 'Condições de pagamento acordadas para o pedido.',
-        ('user_sheets/pedidos.xlsx', 'observacoes_pedido'): 'Campo para observações adicionais sobre o pedido.',
-        ('user_sheets/pedidos.xlsx', 'id_item_pedido'): 'Identificador do item específico dentro do pedido.',
-        ('user_sheets/pedidos.xlsx', 'quantidade_item_pedido'): 'Quantidade do item solicitado no pedido.',
-        ('user_sheets/pedidos.xlsx', 'preco_unitario_item_pedido'): 'Preço unitário do item no momento do pedido.',
-        ('user_sheets/pedidos.xlsx', 'subtotal_item_pedido'): 'Subtotal do item dentro do pedido antes de impostos/descontos.',
-        ('user_sheets/pedidos.xlsx', 'impostos_item_pedido'): 'Valor dos impostos incidentes sobre o item no pedido.',
-        ('user_sheets/pedidos.xlsx', 'descontos_item_pedido'): 'Valor dos descontos aplicados ao item no pedido.',
-        ('user_sheets/pedidos.xlsx', 'data_ultima_atualizacao_pedido'): 'Data da última vez que o pedido foi atualizado no sistema.',
-        ('user_sheets/pedidos.xlsx', 'usuario_ultima_atualizacao_pedido'): 'Usuário que realizou a última atualização no pedido.',
-        ('user_sheets/pedidos.xlsx', 'rastreamento_envio'): 'Código ou link de rastreamento para o envio do pedido.',
-        ('user_sheets/programacao.xlsx', 'id_programacao'): 'Identificador único de cada item de programação da produção.',
-        ('user_sheets/programacao.xlsx', 'id_ordem_producao'): 'Identificador da ordem de produção que está sendo programada.',
-        ('user_sheets/programacao.xlsx', 'data_inicio_programada'): 'Data de início programada para a operação ou ordem de produção.',
-        ('user_sheets/programacao.xlsx', 'hora_inicio_programada'): 'Hora de início programada para a operação ou ordem de produção.',
-        ('user_sheets/programacao.xlsx', 'data_fim_programada'): 'Data de fim programada para a operação ou ordem de produção.',
-        ('user_sheets/programacao.xlsx', 'hora_fim_programada'): 'Hora de fim programada para a operação ou ordem de produção.',
-        ('user_sheets/programacao.xlsx', 'recurso_alocado'): 'Recurso (máquina, posto) que foi alocado para esta programação.',
-        ('user_sheets/programacao.xlsx', 'operacao_programada'): 'Operação específica da rota de produção que está sendo programada.',
-        ('user_sheets/programacao.xlsx', 'sequencia_na_fila'): 'Posição na fila de trabalho do recurso ou prioridade de execução.',
-        ('user_sheets/programacao.xlsx', 'status_programacao'): 'Status da programação (Agendado, Em Andamento, Concluído, Atrasado).',
-        ('user_sheets/programacao.xlsx', 'tempo_restante_programado'): 'Tempo restante estimado para a conclusão da operação/ordem programada.',
-        ('user_sheets/programacao.xlsx', 'desvio_tempo_real'): 'Diferença entre o tempo programado e o tempo real de execução.',
-        ('user_sheets/programacao.xlsx', 'motivo_desvio'): 'Causa específica para o desvio de tempo na programação.',
-        ('user_sheets/programacao.xlsx', 'prioridade_programacao'): 'Nível de prioridade da programação (Alta, Média, Baixa).',
-        ('user_sheets/programacao.xlsx', 'dependencias_operacionais'): 'Outras operações ou tarefas que precisam ser concluídas antes desta programação.',
-        ('user_sheets/programacao.xlsx', 'capacidade_utilizada_percentual'): 'Percentual da capacidade do recurso que será utilizada por esta programação.',
-        ('user_sheets/programacao.xlsx', 'tempo_setup_alocado'): 'Tempo de setup alocado para a operação nesta programação.'
-    }
-
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Atualizador de Cabeçalhos do Banco de Dados")
@@ -864,23 +616,69 @@ class DbHeadersUpdaterTool(QWidget):
         self.layout.addWidget(self.update_button)
 
         self.table = QTableWidget()
-        self.table.setEditTriggers(QTableWidget.NoEditTriggers) # Esta ferramenta é para visualizar/atualizar, não para edição direta de cabeçalhos
+        self.table.setEditTriggers(QTableWidget.NoEditTriggers) 
         self.table.setAlternatingRowColors(True)
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
         self.layout.addWidget(self.table)
         
-        # Novas colunas para pagina_arquivo e descr_variavel
         self.table.setColumnCount(4)
         self.table.setHorizontalHeaderLabels(["Arquivo (Caminho)", "Nome da Coluna (Cabeçalho)", "pagina_arquivo", "descr_variavel"])
 
+    def _load_existing_db_db_data(self):
+        """
+        Carrega os dados existentes da planilha 'db_db' para um dicionário de lookup.
+        Retorna: um dicionário onde a chave é (caminho_relativo_arquivo, nome_coluna)
+                 e o valor é {'pagina_arquivo': ..., 'descr_variavel': ...}.
+        """
+        existing_data = {}
+        try:
+            if not os.path.exists(DB_EXCEL_PATH):
+                return existing_data
+
+            wb = openpyxl.load_workbook(DB_EXCEL_PATH)
+            if "db_db" not in wb.sheetnames:
+                return existing_data
+
+            sheet = wb["db_db"]
+            headers = [cell.value for cell in sheet[1]] if sheet.max_row > 0 else []
+            header_map = {h: idx for idx, h in enumerate(headers)}
+
+            # Garante que as colunas essenciais existem
+            if not all(col in header_map for col in ["Arquivo (Caminho)", "Nome da Coluna (Cabeçalho)", "pagina_arquivo", "descr_variavel"]):
+                print("Aviso: A planilha 'db_db' não possui todos os cabeçalhos esperados.")
+                return existing_data # Não podemos carregar corretamente sem os cabeçalhos
+
+            for row_idx in range(2, sheet.max_row + 1):
+                row_values = [cell.value for cell in sheet[row_idx]]
+                
+                file_path_raw = row_values[header_map["Arquivo (Caminho)"]]
+                column_name = row_values[header_map["Nome da Coluna (Cabeçalho)"]]
+                pagina_arquivo = row_values[header_map["pagina_arquivo"]]
+                descr_variavel = row_values[header_map["descr_variavel"]]
+
+                # Use o caminho relativo normalizado como chave
+                normalized_path = file_path_raw.replace('\\', '/') # Normaliza para consistência
+                
+                if normalized_path and column_name:
+                    existing_data[(normalized_path, str(column_name))] = {
+                        'pagina_arquivo': pagina_arquivo if pagina_arquivo is not None else "",
+                        'descr_variavel': descr_variavel if descr_variavel is not None else ""
+                    }
+        except Exception as e:
+            QMessageBox.critical(self, "Erro ao Carregar DB", f"Não foi possível carregar dados existentes de db_db: {e}")
+            print(f"Erro ao carregar dados existentes de db_db: {e}")
+        return existing_data
+
     def _update_db_headers(self):
-        """Coleta cabeçalhos de todos os arquivos Excel especificados e os salva em db.xlsx (planilha db_db)."""
-        self.status_label.setText("Coletando cabeçalhos...")
-        QApplication.processEvents() # Atualiza a GUI imediatamente
+        """Coleta cabeçalhos de todos os arquivos Excel especificados e os salva em db.xlsx (planilha db_db),
+        preservando informações existentes."""
+        self.status_label.setText("Coletando e mesclando cabeçalhos...")
+        QApplication.processEvents() 
 
-        all_headers_data = []
+        existing_db_data = self._load_existing_db_db_data()
+        all_headers_data = [] # Para a nova lista de dados
+        processed_keys = set() # Para evitar duplicatas na saída final
 
-        # Lista de todos os diretórios relevantes
         directories = {
             "user_sheets": USER_SHEETS_DIR,
             "app_sheets": APP_SHEETS_DIR
@@ -899,25 +697,31 @@ class DbHeadersUpdaterTool(QWidget):
                         wb = openpyxl.load_workbook(file_path)
                         for sheet_name in wb.sheetnames:
                             sheet = wb[sheet_name]
-                            if sheet.max_row > 0:
+                            if sheet.max_row > 0: # Pelo menos a linha de cabeçalho existe
                                 headers = [cell.value for cell in sheet[1]]
                                 for header in headers:
-                                    # Normalize path for dictionary lookup (use forward slashes)
+                                    header_str = str(header) if header is not None else ""
+                                    # Caminho relativo para a chave do dicionário
                                     file_path_rel_normalized = os.path.relpath(file_path, project_root).replace('\\', '/')
-                                    
-                                    # Obtém a descrição da variável do mapeamento, se existir
-                                    description = self.DESCRIPTION_MAP.get(
-                                        (file_path_rel_normalized, str(header) if header is not None else ""), 
-                                        "Descrição não disponível."
-                                    )
-                                    
-                                    # Adiciona o caminho relativo, o cabeçalho, a página da planilha e a descrição
-                                    all_headers_data.append([
-                                        os.path.relpath(file_path, project_root), # Mantém o separador original para exibição
-                                        str(header) if header is not None else "",
-                                        "obs IA olhar em runtime e salvar", # Valor fixo para pagina_arquivo
-                                        description
-                                    ])
+                                    lookup_key = (file_path_rel_normalized, header_str)
+
+                                    if lookup_key not in processed_keys:
+                                        pagina_arquivo = "obs IA olhar em runtime e salvar"
+                                        descr_variavel = ""
+
+                                        # Tenta carregar descrições existentes
+                                        if lookup_key in existing_db_data:
+                                            existing_entry = existing_db_data[lookup_key]
+                                            pagina_arquivo = existing_entry['pagina_arquivo']
+                                            descr_variavel = existing_entry['descr_variavel']
+                                        
+                                        all_headers_data.append([
+                                            os.path.relpath(file_path, project_root), # Mantém separadores nativos para exibição
+                                            header_str,
+                                            pagina_arquivo,
+                                            descr_variavel
+                                        ])
+                                        processed_keys.add(lookup_key) # Adiciona à lista de processados
                     except Exception as e:
                         print(f"Erro ao ler {file_path}: {e}")
                         self.status_label.setText(f"Erro ao ler {filename}: {e}")
@@ -931,12 +735,11 @@ class DbHeadersUpdaterTool(QWidget):
             else:
                 ws_db = wb_db["db_db"]
             
-            # Limpa os dados existentes em db_db, mas mantém a própria planilha
-            for row_idx in range(ws_db.max_row, 0, -1): # Itera da última linha para a primeira (inclusive)
+            # Limpa os dados existentes em db_db
+            for row_idx in range(ws_db.max_row, 0, -1): 
                 ws_db.delete_rows(row_idx)
 
             # Adiciona cabeçalhos para a planilha db_db
-            # Inclui as novas colunas
             ws_db.append(["Arquivo (Caminho)", "Nome da Coluna (Cabeçalho)", "pagina_arquivo", "descr_variavel"])
             
             # Adiciona dados coletados
@@ -944,10 +747,9 @@ class DbHeadersUpdaterTool(QWidget):
                 ws_db.append(row_data)
             
             wb_db.save(DB_EXCEL_PATH)
-            self.status_label.setText("Cabeçalhos atualizados e salvos em db.xlsx (db_db).")
-            QMessageBox.information(self, "Sucesso", "Cabeçalhos atualizados e salvos em db.xlsx (db_db).")
+            self.status_label.setText("Cabeçalhos atualizados e mesclados em db.xlsx (db_db).")
+            QMessageBox.information(self, "Sucesso", "Cabeçalhos atualizados e mesclados em db.xlsx (db_db).")
             
-            # Exibe dados coletados na tabela
             self.table.setRowCount(len(all_headers_data))
             for row_idx, row_data in enumerate(all_headers_data):
                 for col_idx, cell_value in enumerate(row_data):
@@ -966,7 +768,7 @@ class ProfileSettingsWindow(QDialog):
     def __init__(self, username, role):
         super().__init__()
         self.setWindowTitle("Configurações de Perfil")
-        self.setGeometry(200, 200, 400, 300) # x, y, largura, altura
+        self.setGeometry(200, 200, 400, 300) 
 
         self.username = username
         self.role = role
@@ -978,7 +780,6 @@ class ProfileSettingsWindow(QDialog):
 
         layout.addWidget(QLabel("<h2>Informações do Perfil</h2>"))
         
-        # Campo de Usuário
         user_layout = QHBoxLayout()
         user_layout.addWidget(QLabel("<b>Usuário:</b>"))
         user_label = QLabel(self.username)
@@ -986,7 +787,6 @@ class ProfileSettingsWindow(QDialog):
         user_layout.addStretch()
         layout.addLayout(user_layout)
 
-        # Campo de Papel
         role_layout = QHBoxLayout()
         role_layout.addWidget(QLabel("<b>Papel:</b>"))
         role_label = QLabel(self.role)
@@ -994,26 +794,24 @@ class ProfileSettingsWindow(QDialog):
         role_layout.addStretch()
         layout.addLayout(role_layout)
 
-        layout.addStretch() # Empurra o conteúdo para cima
+        layout.addStretch() 
 
-        # Campos de configurações de exemplo
         layout.addWidget(QLabel("<h3>Configurações Adicionais (Exemplo):</h3>"))
         
         email_layout = QHBoxLayout()
         email_layout.addWidget(QLabel("Email:"))
-        email_input = QLineEdit("usuario@example.com") # Valor padrão
+        email_input = QLineEdit("usuario@example.com") 
         email_layout.addWidget(email_input)
         layout.addLayout(email_layout)
 
         lang_layout = QHBoxLayout()
         lang_layout.addWidget(QLabel("Idioma:"))
-        lang_input = QLineEdit("Português (Brasil)") # Valor padrão
+        lang_input = QLineEdit("Português (Brasil)") 
         lang_layout.addWidget(lang_input)
         layout.addLayout(lang_layout)
 
-        # Botão de Fechar
         close_btn = QPushButton("Fechar")
-        close_btn.clicked.connect(self.accept) # Fecha o diálogo
+        close_btn.clicked.connect(self.accept) 
 
         layout.addWidget(close_btn)
         self.setLayout(layout)
@@ -1028,12 +826,12 @@ class TeamcenterStyleGUI(QMainWindow):
     def __init__(self, user):
         super().__init__()
         self.setWindowTitle("Plataforma 5revolution")
-        # self.setGeometry(100, 100, 1280, 800) # O tamanho inicial é definido, mas será maximizado
         
         self.username = user["username"]
         self.role = user["role"]
         self.tools = load_tools_from_excel() 
         self.permissions = load_role_permissions()
+        # self.workspace_items = load_workspace_items_from_excel() # Removido para aguardar "ordem 6"
 
         self._create_toolbar()
         self._create_main_layout()
@@ -1056,8 +854,7 @@ class TeamcenterStyleGUI(QMainWindow):
             if allowed_tools == "all" or tid in allowed_tools:
                 action = tools_menu.addAction(tool["name"])
                 
-                # --- Abertura Dinâmica de Ferramentas com base no ID da ferramenta ---
-                if tool["id"] == "mod4": # Engenharia (Workflow)
+                if tool["id"] == "mod4": 
                     action.triggered.connect(lambda chk=False, title=tool["name"]: self._open_tab(title, EngenhariaWorkflowTool(file_path=ENGENHARIA_EXCEL_PATH)))
                 elif tool["id"] == "mes_pcp": 
                     action.triggered.connect(lambda chk=False, title=tool["name"]: self._open_tab(title, self._create_mes_pcp_tool_widget()))
@@ -1078,7 +875,7 @@ class TeamcenterStyleGUI(QMainWindow):
                 elif tool["id"] == "estoque_tool":
                     action.triggered.connect(lambda chk=False, title=tool["name"]: self._open_tab(title, EstoqueTool(file_path=ESTOQUE_EXCEL_PATH))) 
                 elif tool["id"] == "financeiro":
-                    action.triggered.connect(lambda chk=False, title=tool["name"]: self._open_tab(title, FinanceiroTool(file_path=FINANCEIRO_EXCEL_PATH)))
+                    action.triggered.connect(lambda chk=False, title=tool["name"]: self._open_tab(title, FinanceiroTool(file_path=FINANCEIRO_EXCEL_PATH))) # Corrigido: FinanceiroolTool -> FinanceiroTool
                 elif tool["id"] == "pedidos":
                     action.triggered.connect(lambda chk=False, title=tool["name"]: self._open_tab(title, PedidosTool(file_path=PEDIDOS_EXCEL_PATH)))
                 elif tool["id"] == "manutencao":
@@ -1087,12 +884,11 @@ class TeamcenterStyleGUI(QMainWindow):
                     action.triggered.connect(lambda chk=False, title=tool["name"]: self._open_tab(title, RpiTool(file_path=RPI_EXCEL_PATH)))
                 elif tool["id"] == "engenharia_data":
                     action.triggered.connect(lambda chk=False, title=tool["name"]: self._open_tab(title, EngenhariaDataTool(file_path=ENGENHARIA_EXCEL_PATH)))
-                elif tool["id"] == "db_headers_updater": # Nova ferramenta para db_db
+                elif tool["id"] == "db_headers_updater": 
                     action.triggered.connect(lambda chk=False, title=tool["name"]: self._open_tab(title, DbHeadersUpdaterTool()))
                 else: 
                     action.triggered.connect(lambda chk=False, title=tool["name"], desc=tool["description"]: self._open_tab(title, QLabel(desc)))
         
-        # Ações somente para administrador
         if self.role == "admin":
             tools_menu.addSeparator()
             admin_menu = tools_menu.addMenu("👑 Ferramentas Admin")
@@ -1170,42 +966,52 @@ class TeamcenterStyleGUI(QMainWindow):
         dos diretórios user_sheets e app_sheets.
         Garante que não haja duplicatas limpando primeiro e adicionando explicitamente com base nos caminhos dos arquivos.
         """
-        self.tree.clear() # Limpa itens existentes para evitar duplicatas
+        self.tree.clear() 
         
-        # Seção de Planilhas do Usuário
-        user_sheets_root = QTreeWidgetItem(["Arquivos do Usuário (user_sheets)"])
-        self.tree.addTopLevelItem(user_sheets_root)
-
-        for filename in sorted(os.listdir(USER_SHEETS_DIR)): # Ordena para exibição consistente
-            if filename.endswith('.xlsx'):
-                file_path = os.path.join(USER_SHEETS_DIR, filename)
-                file_item = QTreeWidgetItem([filename])
-                file_item.setData(0, Qt.UserRole, file_path) # Armazena o caminho completo
-                user_sheets_root.addChild(file_item)
-        
-        # Seção de Planilhas do Aplicativo (somente leitura para usuários, mas visível)
-        app_sheets_root = QTreeWidgetItem(["Arquivos do Sistema (app_sheets)"])
-        self.tree.addTopLevelItem(app_sheets_root)
-
-        for filename in sorted(os.listdir(APP_SHEETS_DIR)): # Ordena para exibição consistente
-            if filename.endswith('.xlsx'):
-                file_path = os.path.join(APP_SHEETS_DIR, filename)
-                file_item = QTreeWidgetItem([filename])
-                file_item.setData(0, Qt.UserRole, file_path) # Armazena o caminho completo
-                app_sheets_root.addChild(file_item)
-
-        # Seção de Itens de Projeto/Espaço de Trabalho
+        # Adiciona itens de espaço de trabalho fixos
         projects_root = QTreeWidgetItem(["Projetos/Espaço de Trabalho"])
         self.tree.addTopLevelItem(projects_root)
 
-        project1 = QTreeWidgetItem(["Projeto Demo - Rev A"])
-        project1.addChild(QTreeWidgetItem(["Peça-001"]))
-        project1.addChild(QTreeWidgetItem(["Montagem-001"]))
-        projects_root.addChild(project1)
+        # Adiciona itens da lista WORKSPACE_ITEMS
+        for item_name in WORKSPACE_ITEMS:
+            # Lógica simples para estruturar se for "Projeto" ou "Variante"
+            if "Project" in item_name or "Variant" in item_name:
+                top_level_item = QTreeWidgetItem([item_name])
+                projects_root.addChild(top_level_item)
+                # Você pode adicionar sub-itens aqui se o WORKSPACE_ITEMS fosse mais estruturado
+            else:
+                # Tenta anexar a um projeto/variante existente, ou ao root dos projetos
+                found_parent = False
+                for i in range(projects_root.childCount()):
+                    parent_item = projects_root.child(i)
+                    if "Project" in parent_item.text(0) or "Variant" in parent_item.text(0):
+                        if item_name.startswith(parent_item.text(0).split(' ')[0]): # Ex: Part-001 para Demo Project
+                            parent_item.addChild(QTreeWidgetItem([item_name]))
+                            found_parent = True
+                            break
+                if not found_parent: # Se não encontrou um pai adequado
+                    projects_root.addChild(QTreeWidgetItem([item_name]))
 
-        project2 = QTreeWidgetItem(["Variante Amostra - V1.0"])
-        project2.addChild(QTreeWidgetItem(["Componente-XYZ"]))
-        projects_root.addChild(project2)
+
+        user_sheets_root = QTreeWidgetItem(["Arquivos do Usuário (user_sheets)"])
+        self.tree.addTopLevelItem(user_sheets_root)
+
+        for filename in sorted(os.listdir(USER_SHEETS_DIR)): 
+            if filename.endswith('.xlsx'):
+                file_path = os.path.join(USER_SHEETS_DIR, filename)
+                file_item = QTreeWidgetItem([filename])
+                file_item.setData(0, Qt.UserRole, file_path) 
+                user_sheets_root.addChild(file_item)
+        
+        app_sheets_root = QTreeWidgetItem(["Arquivos do Sistema (app_sheets)"])
+        self.tree.addTopLevelItem(app_sheets_root)
+
+        for filename in sorted(os.listdir(APP_SHEETS_DIR)): 
+            if filename.endswith('.xlsx'):
+                file_path = os.path.join(APP_SHEETS_DIR, filename)
+                file_item = QTreeWidgetItem([filename])
+                file_item.setData(0, Qt.UserRole, file_path) 
+                app_sheets_root.addChild(file_item)
 
         self.tree.expandAll() 
 
@@ -1222,7 +1028,6 @@ class TeamcenterStyleGUI(QMainWindow):
         file_name = os.path.basename(file_path)
         tab_title = f"Visualizador: {file_name}"
         
-        # Determina a ferramenta
         tool_widget = None
 
         if file_name == os.path.basename(ENGENHARIA_EXCEL_PATH):
@@ -1232,13 +1037,13 @@ class TeamcenterStyleGUI(QMainWindow):
         elif file_name == os.path.basename(OUTPUT_EXCEL_PATH):
              tool_widget = ProductDataTool(file_path=file_path)
         elif file_name == os.path.basename(BOM_DATA_EXCEL_PATH):
-             tool_widget = BomManagerTool(file_path=file_path) # Arquivo BOM padrão
+             tool_widget = BomManagerTool(file_path=file_path) 
         elif file_name == os.path.basename(CONFIGURADOR_EXCEL_PATH):
              tool_widget = ConfiguradorTool(file_path=file_path)
-        elif file_name == os.path.basename(ESTOQUE_EXCEL_PATH): # ItemsTool agora gerencia estoque.xlsx
+        elif file_name == os.path.basename(ESTOQUE_EXCEL_PATH): 
              tool_widget = ItemsTool(file_path=file_path)
-        elif file_name == os.path.basename(ITEMS_DATA_EXCEL_PATH): # Para o items_data.xlsx original
-             tool_widget = ItemsTool(file_path=file_path, read_only=True) # Exemplo: talvez items_data.xlsx seja somente leitura se usado junto com estoque.xlsx
+        elif file_name == os.path.basename(ITEMS_DATA_EXCEL_PATH): 
+             tool_widget = ItemsTool(file_path=file_path, read_only=True) 
         elif file_name == os.path.basename(MANUFACTURING_DATA_EXCEL_PATH):
              tool_widget = ManufacturingTool(file_path=file_path)
         elif file_name == os.path.basename(PROGRAMACAO_EXCEL_PATH):
@@ -1251,32 +1056,25 @@ class TeamcenterStyleGUI(QMainWindow):
              tool_widget = ManutencaoTool(file_path=file_path)
         elif file_name == os.path.basename(RPI_EXCEL_PATH):
              tool_widget = RpiTool(file_path=file_path)
-        elif file_name == os.path.basename(DB_EXCEL_PATH): # db.xlsx deve ser aberto pelo DbHeadersUpdaterTool
-            tool_widget = DbHeadersUpdaterTool() # Esta ferramenta carregará/exibirá a planilha db_db
+        elif file_name == os.path.basename(ENGENHARIA_EXCEL_PATH):
+             tool_widget = EngenhariaDataTool(file_path=file_path)
+        elif file_name == os.path.basename(DB_EXCEL_PATH): 
+            tool_widget = DbHeadersUpdaterTool() 
             tab_title = "Atualizador de Cabeçalhos do DB"
-        elif file_name == os.path.basename(TOOLS_EXCEL_PATH): # Tools.xlsx
-            tool_widget = ExcelViewerTool(file_path=file_path, read_only=True) # Exemplo: tools.xlsx pode ser somente leitura
+        elif file_name == os.path.basename(TOOLS_EXCEL_PATH): 
+            tool_widget = ExcelViewerTool(file_path=file_path, read_only=True) 
         elif file_name == os.path.basename(MODULES_EXCEL_PATH):
             tool_widget = ExcelViewerTool(file_path=file_path, read_only=True)
         elif file_name == os.path.basename(PERMISSIONS_EXCEL_PATH):
             tool_widget = ExcelViewerTool(file_path=file_path, read_only=True)
         elif file_name == os.path.basename(ROLES_TOOLS_EXCEL_PATH):
             tool_widget = ExcelViewerTool(file_path=file_path, read_only=True)
-        elif file_name == os.path.basename(USERS_EXCEL_PATH): # Se este for um arquivo separado e não uma aba em db.xlsx
+        elif file_name == os.path.basename(USERS_EXCEL_PATH): 
             tool_widget = ExcelViewerTool(file_path=file_path, read_only=True)
         elif file_name == os.path.basename(MAIN_EXCEL_PATH):
             tool_widget = ExcelViewerTool(file_path=file_path, read_only=True)
-        else: # Visualizador Excel genérico para qualquer outro arquivo .xlsx
+        else: 
             tool_widget = ExcelViewerTool(file_path=file_path)
-
-        # Para casos onde Engenharia.xlsx é aberto por outra ferramenta (como RPI ou Items)
-        if file_name == os.path.basename(ENGENHARIA_EXCEL_PATH):
-            # A lógica de somente leitura baseada no nome do arquivo já está dentro do __init__ das ferramentas,
-            # mas podemos forçar aqui se a intenção for sempre ter somente leitura para engenharia.xlsx
-            # quando acessado por certas ferramentas. Por enquanto, a flag `read_only` passada no construtor
-            # das ferramentas já cuida disso.
-            pass
-
 
         if tool_widget:
             self._open_tab(tab_title, tool_widget)
@@ -1298,14 +1096,13 @@ class TeamcenterStyleGUI(QMainWindow):
         self.mes_item_code_input.setPlaceholderText("Código do Item")
         self.mes_quantity_input = QLineEdit()
         self.mes_quantity_input.setPlaceholderText("Quantidade Produzida")
-        # For simplicity, using QLineEdit. For actual datetime, consider QDateTimeEdit.
         self.mes_start_time_input = QLineEdit()
         self.mes_start_time_input.setPlaceholderText("Hora de Início (AAAA-MM-DD HH:MM)")
         self.mes_end_time_input = QLineEdit()
         self.mes_end_time_input.setPlaceholderText("Hora de Término (AAAA-MM-DD HH:MM)")
 
         submit_btn = QPushButton("Enviar Dados de Produção")
-        submit_btn.clicked.connect(self._submit_mes_data) # Conecta a um manipulador de envio
+        submit_btn.clicked.connect(self._submit_mes_data) 
 
         form_layout.addWidget(QLabel("ID da Ordem de Produção:"))
         form_layout.addWidget(self.mes_order_id_input)
@@ -1320,7 +1117,7 @@ class TeamcenterStyleGUI(QMainWindow):
         form_layout.addWidget(submit_btn)
 
         mes_layout.addLayout(form_layout)
-        mes_layout.addStretch() # Empurra o conteúdo para cima
+        mes_layout.addStretch() 
         mes_widget.setLayout(mes_layout)
         return mes_widget
 
@@ -1336,7 +1133,6 @@ class TeamcenterStyleGUI(QMainWindow):
             QMessageBox.warning(self, "Erro de Entrada", "Todos os campos MES devem ser preenchidos.")
             return
 
-        # Em uma aplicação real, você salvaria esses dados em um banco de dados ou arquivo
         QMessageBox.information(self, "Dados MES Enviados",
                                 f"Dados de Produção Enviados:\n"
                                 f"ID da Ordem: {order_id}\n"
@@ -1344,7 +1140,6 @@ class TeamcenterStyleGUI(QMainWindow):
                                 f"Quantidade: {quantity}\n"
                                 f"Início: {start_time}\n"
                                 f"Término: {end_time}")
-        # Limpa os campos após o envio
         self.mes_order_id_input.clear()
         self.mes_item_code_input.clear()
         self.mes_quantity_input.clear()
@@ -1369,7 +1164,7 @@ class TeamcenterStyleGUI(QMainWindow):
         """
         dialog = QDialog(self)
         dialog.setWindowTitle("Resultados da Pesquisa")
-        dialog.setGeometry(self.x() + 200, self.y() + 100, 400, 300) # Posição relativa à janela principal
+        dialog.setGeometry(self.x() + 200, self.y() + 100, 400, 300) 
 
         layout = QVBoxLayout(dialog)
         
@@ -1381,14 +1176,14 @@ class TeamcenterStyleGUI(QMainWindow):
                 list_widget.addItem(item)
             list_widget.itemDoubleClicked.connect(
                 lambda item: self.open_selected_item_tab(item.text()) or dialog.accept()
-            ) # Fecha o diálogo ao dar clique duplo
+            ) 
             layout.addWidget(list_widget)
 
         close_btn = QPushButton("Fechar")
-        close_btn.clicked.connect(dialog.accept) # Fecha o diálogo ao clicar no botão
+        close_btn.clicked.connect(dialog.accept) 
         layout.addWidget(close_btn)
 
-        dialog.exec_() # Exibe o diálogo modalmente
+        dialog.exec_() 
 
     def open_selected_item_tab(self, item_name):
         """
@@ -1396,20 +1191,18 @@ class TeamcenterStyleGUI(QMainWindow):
         """
         tab_title = f"Detalhes: {item_name}"
 
-        # Verifica se a aba já está aberta
         for i in range(self.tabs.count()):
             if self.tabs.tabText(i) == tab_title:
                 self.tabs.setCurrentIndex(i)
                 QMessageBox.information(self, "Informação", f"A guia para '{item_name}' já está aberta.")
                 return
 
-        # Cria um widget para os detalhes do item
         item_details_widget = QWidget()
         item_details_layout = QVBoxLayout()
         item_details_layout.addWidget(QLabel(f"<h2>Detalhes do Item: {item_name}</h2>"))
         item_details_layout.addWidget(QLabel(f"Exibindo detalhes abrangentes para <b>{item_name}</b>."))
         item_details_layout.addWidget(QLabel("Esta seção carregaria dados reais: propriedades, revisões, arquivos associados, etc."))
-        item_details_layout.addStretch() # Empurra o conteúdo para cima
+        item_details_layout.addStretch() 
         item_details_widget.setLayout(item_details_layout)
 
         self._open_tab(tab_title, item_details_widget)
@@ -1418,31 +1211,29 @@ class TeamcenterStyleGUI(QMainWindow):
 
     def _open_tab(self, title, widget_instance):
         """
-        Abre uma nova aba ou alterna para uma existente.
-        Aceita uma instância de widget diretamente.
+        Opens a new tab or switches to an existing one.
+        Accepts a widget instance directly.
         """
         for i in range(self.tabs.count()):
             if self.tabs.tabText(i) == title:
                 self.tabs.setCurrentIndex(i)
                 return
-        # Se a aba não existir, adiciona-a
         self.tabs.addTab(widget_instance, title)
-        self.tabs.setCurrentIndex(self.tabs.count() - 1) # Alterna para a aba recém-aberta
+        self.tabs.setCurrentIndex(self.tabs.count() - 1) 
 
     def _open_options(self):
         """Abre a caixa de diálogo de opções/configurações do usuário."""
-        # Cria e exibe a janela de configurações de perfil
         settings_dialog = ProfileSettingsWindow(self.username, self.role)
-        settings_dialog.exec_() # Executa como diálogo modal
+        settings_dialog.exec_() 
 
     def _logout(self):
         """Faz logout do usuário atual e retorna para a tela de login."""
         confirm_logout = QMessageBox.question(self, "Confirmação de Saída", "Tem certeza de que deseja sair?",
                                               QMessageBox.Yes | QMessageBox.No)
         if confirm_logout == QMessageBox.Yes:
-            self.close() # Fecha a janela principal do aplicativo
-            self.login = LoginWindow() # Cria uma nova instância da janela de login
-            self.login.show() # Exibe a janela de login
+            self.close() 
+            self.login = LoginWindow() 
+            self.login.show() 
 
     def _show_tree_context_menu(self, pos):
         """Exibe um menu de contexto para itens na visualização em árvore."""
@@ -1453,10 +1244,8 @@ class TeamcenterStyleGUI(QMainWindow):
         file_path = item.data(0, Qt.UserRole)
         file_name = os.path.basename(file_path) if file_path else ""
 
-        # Verifica se o arquivo está protegido
         is_protected = file_name in PROTECTED_FILES
 
-        # Ações para arquivos .xlsx
         if file_path and file_path.endswith('.xlsx'):
             menu.addAction("Abrir no Visualizador Excel Genérico", lambda: self._open_tab(f"Visualizador: {file_name}", ExcelViewerTool(file_path=file_path)))
             
@@ -1471,13 +1260,11 @@ class TeamcenterStyleGUI(QMainWindow):
                 delete_action = menu.addAction("Excluir Arquivo")
                 delete_action.triggered.connect(lambda: self._delete_file(item))
             else:
-                # Adiciona uma ação desabilitada para indicar proteção
                 protected_rename_action = menu.addAction("Renomear (Protegido)")
                 protected_rename_action.setEnabled(False)
                 protected_delete_action = menu.addAction("Excluir (Protegido)")
                 protected_delete_action.setEnabled(False)
 
-        # Ações gerais para qualquer item da árvore
         else: 
             menu.addAction("🔍 Ver Detalhes", lambda: QMessageBox.information(self, "Ação Similada", f"Visualizando detalhes para: {item.text(0)} (ação simulada)"))
             menu.addAction("✏️ Editar Propriedades", lambda: QMessageBox.information(self, "Ação Similada", f"Editando propriedades para: {item.text(0)} (ação simulada)"))
@@ -1492,7 +1279,6 @@ class TeamcenterStyleGUI(QMainWindow):
 
         old_file_name = os.path.basename(old_file_path)
 
-        # Impede a renomeação de arquivos protegidos
         if old_file_name in PROTECTED_FILES:
             QMessageBox.warning(self, "Operação Não Permitida", f"O arquivo '{old_file_name}' é protegido e não pode ser renomeado.")
             return
@@ -1500,7 +1286,6 @@ class TeamcenterStyleGUI(QMainWindow):
         new_file_name, ok = QInputDialog.getText(self, "Renomear Arquivo", f"Novo nome para '{old_file_name}':", QLineEdit.Normal, old_file_name)
         
         if ok and new_file_name and new_file_name != old_file_name:
-            # Garante que o novo nome tenha a extensão .xlsx se for um arquivo Excel
             if old_file_name.endswith('.xlsx') and not new_file_name.endswith('.xlsx'):
                 new_file_name += '.xlsx'
 
@@ -1512,8 +1297,8 @@ class TeamcenterStyleGUI(QMainWindow):
 
             try:
                 os.rename(old_file_path, new_file_path)
-                item.setText(0, new_file_name) # Atualiza o texto do item na árvore
-                item.setData(0, Qt.UserRole, new_file_path) # Atualiza o caminho armazenado
+                item.setText(0, new_file_name) 
+                item.setData(0, Qt.UserRole, new_file_path) 
                 QMessageBox.information(self, "Sucesso", f"Arquivo renomeado para '{new_file_name}'.")
             except Exception as e:
                 QMessageBox.critical(self, "Erro ao Renomear", f"Não foi possível renomear o arquivo: {e}")
@@ -1525,7 +1310,6 @@ class TeamcenterStyleGUI(QMainWindow):
 
         file_name = os.path.basename(file_path)
 
-        # Impede a exclusão de arquivos protegidos
         if file_name in PROTECTED_FILES:
             QMessageBox.warning(self, "Operação Não Permitida", f"O arquivo '{file_name}' é protegido e não pode ser excluído.")
             return
@@ -1541,7 +1325,7 @@ class TeamcenterStyleGUI(QMainWindow):
                 if parent_item:
                     parent_item.removeChild(item)
                 else:
-                    self.tree.invisibleRootItem().removeChild(item) # Para itens de nível superior
+                    self.tree.invisibleRootItem().removeChild(item) 
                 QMessageBox.information(self, "Sucesso", f"Arquivo '{file_name}' excluído com sucesso.")
             except Exception as e:
                 QMessageBox.critical(self, "Erro ao Excluir", f"Não foi possível excluir o arquivo: {e}")
@@ -1562,13 +1346,12 @@ class TeamcenterStyleGUI(QMainWindow):
             return
 
         try:
-            # Executa o script e captura a saída
             result = subprocess.run([sys.executable, script_path], capture_output=True, text=True, check=True)
             QMessageBox.information(self, "Script Executado", 
                                     f"Script '{os.path.basename(script_path)}' executado com sucesso.\n\n"
                                     f"Saída:\n{result.stdout}\n"
                                     f"Erros (se houver):\n{result.stderr}")
-            self._populate_sample_tree() # Atualiza a árvore para mostrar o novo arquivo se criado
+            self._populate_sample_tree() 
         except subprocess.CalledProcessError as e:
             QMessageBox.critical(self, "Erro de Execução do Script", 
                                  f"O script '{os.path.basename(script_path)}' falhou com erro:\n\n"
