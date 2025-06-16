@@ -1,5 +1,5 @@
 import sys
-from PyQt5.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QComboBox, QMessageBox
+from PyQt5.QtWidgets import QApplication, QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QComboBox, QMessageBox
 from PyQt5.QtCore import Qt
 
 class AddItemDialog(QDialog):
@@ -31,6 +31,7 @@ class AddItemDialog(QDialog):
         name_layout.addWidget(QLabel("Nome do Item:"))
         self.name_input = QLineEdit()
         self.name_input.setPlaceholderText("Nome Descritivo do Item")
+        # No input mask for name, as it can be free text.
         name_layout.addWidget(self.name_input)
         self.layout.addLayout(name_layout)
 

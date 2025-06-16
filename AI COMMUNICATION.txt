@@ -1,14 +1,7 @@
-implementar dropdown na seleção de páginas das planilhas nas tools que tem que olhar todas as páginas já criadas possíveis deixando o usuário selecionar.
-implementar adição de novos itens que pede os parâmetros das planilhas e filtra entrada para texo
-adicionar ações ao botão direito do mouse pertinentes de cada tool
-Traceback (most recent call last):
-  File "C:\Users\leona\OneDrive\Documentos\GitHub\5REV-SHEETS\client\gui.py", line 444, in <lambda>
-    action.triggered.connect(lambda chk=False, title=tool["name"]: self._open_tab(title, EngenhariaWorkflowTool()))
-                                                                                         ~~~~~~~~~~~~~~~~~~~~~~^^
-  File "C:\Users\leona\OneDrive\Documentos\GitHub\5REV-SHEETS\client\gui.py", line 311, in __init__
-    self._add_sample_diagram_elements()
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
-  File "C:\Users\leona\OneDrive\Documentos\GitHub\5REV-SHEETS\client\gui.py", line 336, in _add_sample_diagram_elements
-    self.scene.addText("Fase de Design", QPointF(55, 65))
-    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-TypeError: addText(self, text: Optional[str], font: QFont = QFont()): argument 2 has unexpected type 'QPointF'
+implementar dropbox na seleção de páginas das planilhas nas tools que tem que olhar todas as páginas já criadas possíveis deixando o usuário selecionar, igual na tool product_data já implementado.
+mostrar por default a primeira página da planilha independente do nome.
+Precisamos melhorar o todo do nosso projeto como uma coisa só, considerando as primeiras linhas da primeira página dos 
+.xlsx da pasta user_sheets como principais inputs do usuários dentro de cada tool particular
+para utilizar dados novos nas planilhas user_sheets que eu coloquei hoje com input e output de usuário para cada tool
+com input e output de usuário para cada tool, conforme adicionado novos dados voltados para cada usuário.
+tornar workspace_data.xlsx obsoleto neste processo

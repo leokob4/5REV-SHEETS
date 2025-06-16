@@ -7,3 +7,4 @@ python-multipart
 jinja2
 PyQt5
 Flask
+pandas

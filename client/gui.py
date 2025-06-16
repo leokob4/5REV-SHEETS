@@ -22,7 +22,7 @@ if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
 # --- Importação dos Módulos das Ferramentas ---
-# Certifique-se de que esses arquivos existem em client/ui/tools/
+# Certifique-se de que esses arquivos existem nas pastas corretas e que os __init__.py estão presentes.
 from ui.tools.product_data import ProductDataTool
 from ui.tools.bom_manager import BomManagerTool
 from ui.tools.configurador import ConfiguradorTool
@@ -97,7 +97,7 @@ def register_user(username, password, role="user"):
     except KeyError:
         QMessageBox.critical(None, "Erro de Planilha", f"A planilha 'users' não foi encontrada em {DB_EXCEL_PATH}. Não é possível registrar o usuário.")
     except Exception as e:
-        QMessageBox.critical(None, "Erro de Registro", f"Ocorreu um erro durante o registro do usuário: {e}")
+        QMessageBox.critical(None, "Erro", f"Ocorreu um erro durante o registro do usuário: {e}")
 
 def load_tools_from_excel():
     """
@@ -166,24 +166,12 @@ def load_workspace_items_from_excel():
             ws = wb.active
             ws.title = "items"
             ws.append(["ID", "Name", "Type", "ParentID", "Description"])
-            ws.append(["PROJ-001", "Demo Project - Rev A", "Project", "ROOT", "Main project for demonstration"])
-            ws.append(["PART-001", "Part-001", "Part", "PROJ-001", "A manufactured part"])
-            ws.append(["ASSY-001", "Assembly-001", "Assembly", "PROJ-001", "An assembly of multiple parts"])
-            ws.append(["COMP-001", "Component-XYZ", "Component", "ASSY-001", "A standard component"])
-            ws.append(["VAR-001", "Sample Variant - V1.0", "Variant", "ROOT", "A product variant"])
-            ws.append(["DRAW-001", "Drawing-CAD-001", "Document", "PART-001", "CAD drawing for Part-001"])
             
             ws_structure = wb.create_sheet("structure")
             ws_structure.append(["ParentID", "ComponentID", "ComponentName", "Quantity", "Unit", "Type"])
-            ws_structure.append(["ASSY-001", "PART-001", "Part-001", 2, "PCS", "Part"])
-            ws_structure.append(["ASSY-001", "COMP-001", "Component-XYZ", 1, "PCS", "Component"])
-            ws_structure.append(["PROJ-001", "ASSY-001", "Assembly-001", 1, "EA", "Assembly"])
-            ws_structure.append(["PROJ-001", "DRAW-001", "Drawing-CAD-001", 1, "EA", "Document"])
-            ws_structure.append(["VAR-001", "PART-001", "Part-001", 1, "PCS", "Part"])
-            ws_structure.append(["VAR-001", "DRAW-001", "Drawing-CAD-001", 1, "EA", "Document"])
 
             wb.save(WORKSPACE_EXCEL_PATH)
-            QMessageBox.information(None, "Arquivo de Workspace Criado", f"O arquivo '{WORKSPACE_EXCEL_PATH}' foi criado com dados de exemplo.")
+            QMessageBox.information(None, "Arquivo de Workspace Criado", f"O arquivo '{WORKSPACE_EXCEL_PATH}' foi criado.")
         
         wb = openpyxl.load_workbook(WORKSPACE_EXCEL_PATH)
         if "items" not in wb.sheetnames:
