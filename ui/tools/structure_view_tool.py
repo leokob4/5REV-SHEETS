@@ -4,62 +4,59 @@ import sys
 from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QTreeWidget, QTreeWidgetItem, QLabel, QMessageBox, QHeaderView
 from PyQt5.QtCore import Qt
 
-# Define the path to the Excel file for structure data
-STRUCTURE_EXCEL_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'user_sheets', 'workspace_data.xlsx')
-STRUCTURE_SHEET_NAME = "structure" # Sheet for parent-child relationships
+# Define o caminho padrão para o arquivo Excel para dados de estrutura
+# Agora pode aceitar um file_path no __init__
+# STRUCTURE_EXCEL_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'user_sheets', 'workspace_data.xlsx')
+# STRUCTURE_SHEET_NAME = "structure" # Planilha para relações pai-filho
 
 class StructureViewTool(QWidget):
     """
-    GUI for viewing the hierarchical structure (e.g., BOM or file structure)
-    of a selected item from the workspace.
+    GUI para visualizar a estrutura hierárquica (e.g., BOM ou estrutura de arquivo)
+    de um item selecionado ou de uma planilha específica em um arquivo Excel.
     """
-    def __init__(self, item_id, item_name):
+    def __init__(self, file_path, sheet_name="structure"):
         super().__init__()
-        self.item_id = item_id
-        self.item_name = item_name
-        self.setWindowTitle(f"Estrutura do Item: {self.item_name} ({self.item_id})")
+        self.file_path = file_path
+        self.sheet_name = sheet_name
+        self.setWindowTitle(f"Estrutura: {os.path.basename(self.file_path)} ({self.sheet_name})")
         self.layout = QVBoxLayout(self)
 
-        self.layout.addWidget(QLabel(f"<h2>Estrutura para: {self.item_name} ({self.item_id})</h2>"))
-        self.layout.addWidget(QLabel("Exibindo subcomponentes e documentos relacionados."))
+        self.layout.addWidget(QLabel(f"<h2>Estrutura do Arquivo: {os.path.basename(self.file_path)}</h2>"))
+        self.layout.addWidget(QLabel(f"Exibindo estrutura da planilha: <b>{self.sheet_name}</b>"))
 
         self.structure_tree = QTreeWidget()
-        self.structure_tree.setHeaderLabels(["ID", "Nome", "Tipo", "Quantidade", "Unidade"])
+        self.structure_tree.setHeaderLabels(["ID do Componente", "Nome do Componente", "Tipo", "Quantidade", "Unidade"])
         self.structure_tree.header().setSectionResizeMode(QHeaderView.ResizeToContents)
         self.layout.addWidget(self.structure_tree)
 
         self._load_structure_data()
 
     def _load_structure_data(self):
-        """Loads and displays the hierarchical structure for the given item_id."""
+        """Carrega e exibe a estrutura hierárquica do arquivo e planilha especificados."""
         self.structure_tree.clear()
         
+        if not self.file_path or not os.path.exists(self.file_path):
+            QMessageBox.warning(self, "Arquivo Não Encontrado", f"O arquivo de estrutura não foi encontrado: {self.file_path}.")
+            self.structure_tree.addTopLevelItem(QTreeWidgetItem(["N/A", "Arquivo não encontrado.", "", "", ""]))
+            return
+
         try:
-            if not os.path.exists(STRUCTURE_EXCEL_PATH):
-                QMessageBox.warning(self, "Arquivo de Estrutura Não Encontrado", f"O arquivo de dados de estrutura não foi encontrado: {STRUCTURE_EXCEL_PATH}.")
-                # Optionally create a dummy structure if the file is missing
-                self._add_dummy_structure_if_missing()
+            wb = openpyxl.load_workbook(self.file_path)
+            if self.sheet_name not in wb.sheetnames:
+                QMessageBox.warning(self, "Planilha Não Encontrada", f"A planilha '{self.sheet_name}' não foi encontrada em '{os.path.basename(self.file_path)}'.")
+                self.structure_tree.addTopLevelItem(QTreeWidgetItem(["N/A", "Planilha não encontrada.", "", "", ""]))
                 return
 
-            wb = openpyxl.load_workbook(STRUCTURE_EXCEL_PATH)
-            if STRUCTURE_SHEET_NAME not in wb.sheetnames:
-                QMessageBox.warning(self, "Planilha de Estrutura Não Encontrada", f"A planilha '{STRUCTURE_SHEET_NAME}' não foi encontrada em '{STRUCTURE_EXCEL_PATH}'.")
-                # Optionally create a dummy structure if the sheet is missing
-                self._add_dummy_structure_if_missing()
-                return
-
-            sheet = wb[STRUCTURE_SHEET_NAME]
-            headers = [cell.value for cell in sheet[1]]
+            sheet = wb[self.sheet_name]
+            headers = [cell.value for cell in sheet[1]] if sheet.max_row > 0 else []
             
-            # Create a map for quick column access
             header_map = {header: idx for idx, header in enumerate(headers)}
             
-            # Group children by parent ID
             children_map = {}
             for row_idx in range(2, sheet.max_row + 1):
                 row_values = [cell.value for cell in sheet[row_idx]]
                 
-                # Use .get() with a default of None to handle missing columns gracefully
+                # Certifica-se de que os índices existem antes de tentar acessá-los
                 parent_id = row_values[header_map.get("ParentID")] if "ParentID" in header_map and header_map.get("ParentID") < len(row_values) else None
                 component_id = row_values[header_map.get("ComponentID")] if "ComponentID" in header_map and header_map.get("ComponentID") < len(row_values) else None
                 component_name = row_values[header_map.get("ComponentName")] if "ComponentName" in header_map and header_map.get("ComponentName") < len(row_values) else None
@@ -78,62 +75,74 @@ class StructureViewTool(QWidget):
                         "Unit": unit
                     })
             
-            # Find and display children of the current item
-            if self.item_id in children_map:
-                self._add_items_to_tree(self.structure_tree.invisibleRootItem(), children_map, self.item_id)
-                self.structure_tree.expandAll() # Expand all nodes in structure view
+            # Tenta encontrar a estrutura para um item "raiz" conceitual ou o item inicial
+            # Para BOMs, muitas vezes há um item "pai" que contém todos os outros
+            root_item_id = "ROOT" # Um ID de item pai genérico se não houver um pai claro no BOM
+
+            # Tenta encontrar o item raiz mais provável (o primeiro parentID que não é filho de ninguém)
+            all_parent_ids = set(children_map.keys())
+            all_child_ids = set(c_data["ID"] for children_list in children_map.values() for c_data in children_list)
+            
+            possible_roots = list(all_parent_ids - all_child_ids)
+            
+            if possible_roots:
+                # Se houver raízes claras, use a primeira ou peça ao usuário para escolher
+                root_item_id = possible_roots[0]
+            elif children_map:
+                # Se não houver raízes claras, mas há dados, pegue o primeiro pai como raiz
+                root_item_id = list(children_map.keys())[0]
             else:
-                QMessageBox.information(self, "Nenhuma Estrutura Encontrada", f"Nenhum subcomponente ou documento encontrado para o item '{self.item_name}' (ID: {self.item_id}).")
-                self.structure_tree.addTopLevelItem(QTreeWidgetItem(["N/A", "Nenhum subcomponente.", "", "", ""]))
+                 QMessageBox.information(self, "Nenhuma Estrutura Encontrada", f"Nenhum dado de estrutura encontrado na planilha '{self.sheet_name}' do arquivo '{os.path.basename(self.file_path)}'.")
+                 self.structure_tree.addTopLevelItem(QTreeWidgetItem(["N/A", "Nenhum dado de estrutura.", "", "", ""]))
+                 return
+            
+            self._add_items_to_tree(self.structure_tree.invisibleRootItem(), children_map, root_item_id)
+            self.structure_tree.expandAll()
 
         except Exception as e:
-            QMessageBox.critical(self, "Erro ao Carregar Estrutura", f"Erro ao carregar dados da estrutura para '{self.item_name}': {e}")
+            QMessageBox.critical(self, "Erro ao Carregar Estrutura", f"Erro ao carregar dados da estrutura de '{os.path.basename(self.file_path)}' ({self.sheet_name}): {e}")
             self.structure_tree.addTopLevelItem(QTreeWidgetItem(["Erro", "Erro ao carregar dados.", "", "", ""]))
 
     def _add_items_to_tree(self, parent_qtree_item, children_map, current_item_id):
-        """Recursively adds items to the QTreeWidget based on parent-child relationships."""
+        """Adiciona recursivamente itens ao QTreeWidget com base nas relações pai-filho."""
         if current_item_id in children_map:
             for child_data in children_map[current_item_id]:
                 q_item = QTreeWidgetItem([
-                    str(child_data.get('ID', '')), # Ensure string conversion
+                    str(child_data.get('ID', '')),
                     str(child_data.get('Name', '')),
                     str(child_data.get('Type', '')),
                     str(child_data.get('Quantity', '')),
                     str(child_data.get('Unit', ''))
                 ])
                 parent_qtree_item.addChild(q_item)
-                # Recursively add children of this child
                 self._add_items_to_tree(q_item, children_map, child_data['ID'])
-
-    def _add_dummy_structure_if_missing(self):
-        """
-        Creates a dummy structure in the tree if the Excel file/sheet is missing,
-        to provide a visual representation of how structure would look.
-        """
-        QMessageBox.information(self, "Estrutura de Exemplo", "Exibindo uma estrutura de exemplo. Por favor, crie o arquivo 'workspace_data.xlsx' com a planilha 'structure' para dados reais.")
-        
-        # Clear existing
-        self.structure_tree.clear()
-
-        # Add dummy data for the selected item's children
-        if self.item_id == "PROJ-001":
-            q_item_assy = QTreeWidgetItem(["ASSY-001", "Assembly-001 (Exemplo)", "Assembly", "1", "EA"])
-            self.structure_tree.addTopLevelItem(q_item_assy)
-            q_item_assy.addChild(QTreeWidgetItem(["PART-001", "Part-001 (Exemplo)", "Part", "2", "PCS"]))
-            q_item_assy.addChild(QTreeWidgetItem(["COMP-001", "Component-XYZ (Exemplo)", "Component", "1", "PCS"]))
-            self.structure_tree.addTopLevelItem(QTreeWidgetItem(["DRAW-001", "Drawing-CAD-001 (Exemplo)", "Document", "1", "EA"]))
-        elif self.item_id == "ASSY-001":
-            self.structure_tree.addTopLevelItem(QTreeWidgetItem(["PART-001", "Part-001 (Exemplo)", "Part", "2", "PCS"]))
-            self.structure_tree.addTopLevelItem(QTreeWidgetItem(["COMP-001", "Component-XYZ (Exemplo)", "Component", "1", "PCS"]))
-        else:
-            self.structure_tree.addTopLevelItem(QTreeWidgetItem(["N/A", "Nenhum subcomponente (Exemplo)", "", "", ""]))
-
-        self.structure_tree.expandAll()
 
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    # For standalone testing, you can pass dummy IDs
-    window = StructureViewTool("PROJ-001", "Demo Project - Rev A")
+    project_root_test = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    test_file_dir = os.path.join(project_root_test, 'user_sheets')
+    os.makedirs(test_file_dir, exist_ok=True)
+    test_file_path = os.path.join(test_file_dir, "bom_data.xlsx") # Exemplo de arquivo com estrutura
+
+    # Criar um arquivo de exemplo com uma planilha 'structure' se não existir
+    if not os.path.exists(test_file_path):
+        wb_test = openpyxl.Workbook()
+        ws_test = wb_test.active
+        ws_test.title = "BOM" # Aba padrão para BOM Manager
+        ws_test.append(["ID do BOM", "ID do Componente", "Nome do Componente", "Quantidade", "Unidade", "Ref Designator"])
+        ws_test.append(["BOM-001", "PART-001", "Motor Elétrico", 1, "EA", "M1"])
+        
+        ws_structure_test = wb_test.create_sheet("structure")
+        ws_structure_test.append(["ParentID", "ComponentID", "ComponentName", "Quantity", "Unit", "Type"])
+        ws_structure_test.append(["PROD-001", "ASSY-001", "Produto Completo", 1, "EA", "Assembly"])
+        ws_structure_test.append(["ASSY-001", "SUB-ASSY-001", "Sub-Montagem X", 1, "EA", "Assembly"])
+        ws_structure_test.append(["ASSY-001", "PART-002", "Parafuso M5", 10, "PCS", "Part"])
+        ws_structure_test.append(["SUB-ASSY-001", "PART-003", "Placa Controladora", 1, "EA", "Part"])
+        ws_structure_test.append(["SUB-ASSY-001", "PART-004", "Sensor de Temperatura", 2, "PCS", "Part"])
+        wb_test.save(test_file_path)
+        print(f"Arquivo de teste '{test_file_path}' criado com dados de exemplo.")
+
+    window = StructureViewTool(file_path=test_file_path, sheet_name="structure")
     window.show()
     sys.exit(app.exec_())

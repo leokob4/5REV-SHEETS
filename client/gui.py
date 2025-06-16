@@ -37,9 +37,12 @@ from ui.tools.manutencao import ManutencaoTool
 from ui.tools.structure_view_tool import StructureViewTool
 from ui.tools.user_settings_tool import UserSettingsTool
 from ui.tools.engenharia_workflow_tool import EngenhariaWorkflowTool
+from ui.tools.excel_viewer_tool import ExcelViewerTool # Novo import para a ferramenta genérica de visualização de Excel
 
 # Importa o novo diálogo de adição de item (agora de client.add_item_dialog)
-from client.add_item_dialog import AddItemDialog
+# Note: As funções de adição de item ao 'workspace_data.xlsx' serão removidas,
+# mas o diálogo pode ser reutilizado para outras finalidades no futuro se necessário.
+from client.add_item_dialog import AddItemDialog 
 
 # --- Configuração de Caminhos de Arquivos ---
 # Define paths padrão para consistência.
@@ -47,11 +50,30 @@ USER_SHEETS_DIR = os.path.join(project_root, "user_sheets")
 APP_SHEETS_DIR = os.path.join(project_root, "app_sheets")
 DB_EXCEL_PATH = os.path.join(USER_SHEETS_DIR, "db.xlsx")
 TOOLS_EXCEL_PATH = os.path.join(APP_SHEETS_DIR, "tools.xlsx")
-WORKSPACE_EXCEL_PATH = os.path.join(USER_SHEETS_DIR, "workspace_data.xlsx")
+# WORKSPACE_EXCEL_PATH foi tornado obsoleto e removido.
 
 # Garante que os diretórios existam
 os.makedirs(USER_SHEETS_DIR, exist_ok=True)
 os.makedirs(APP_SHEETS_DIR, exist_ok=True)
+
+# --- Mapeamento de Nomes de Arquivo Excel para Ferramentas Específicas ---
+# Adicione mais mapeamentos conforme você implementa cada ferramenta
+EXCEL_TOOL_MAP = {
+    "output.xlsx": ProductDataTool,
+    "bom_data.xlsx": BomManagerTool,
+    "configurador_data.xlsx": ConfiguradorTool,
+    "colaboradores_data.xlsx": ColaboradoresTool,
+    "items_data.xlsx": ItemsTool,
+    "manufacturing_data.xlsx": ManufacturingTool,
+    "pcp_data.xlsx": PcpTool,
+    "estoque_data.xlsx": EstoqueTool,
+    "financeiro_data.xlsx": FinanceiroTool,
+    "pedidos_data.xlsx": PedidosTool,
+    "manutencao_data.xlsx": ManutencaoTool,
+    # Atenção: 'db.xlsx' e 'tools.xlsx' são arquivos do sistema, não devem ser abertos diretamente por aqui.
+    # Engenharia Workflow Tool (mod4) não interage diretamente com um arquivo .xlsx de usuário de forma padronizada para este mapeamento
+}
+
 
 # === FUNÇÕES DE AJUDA PARA PLANILHAS ===
 def load_users_from_excel():
@@ -157,77 +179,6 @@ def load_role_permissions():
         QMessageBox.critical(None, "Erro de Carregamento", f"Erro ao carregar permissões: {e}")
         return {}
 
-def load_workspace_items_from_excel():
-    """Carrega itens do espaço de trabalho de workspace_data.xlsx, criando-o se necessário."""
-    items = []
-    try:
-        if not os.path.exists(WORKSPACE_EXCEL_PATH):
-            wb = openpyxl.Workbook()
-            ws = wb.active
-            ws.title = "items"
-            ws.append(["ID", "Name", "Type", "ParentID", "Description"])
-            
-            ws_structure = wb.create_sheet("structure")
-            ws_structure.append(["ParentID", "ComponentID", "ComponentName", "Quantity", "Unit", "Type"])
-
-            wb.save(WORKSPACE_EXCEL_PATH)
-            QMessageBox.information(None, "Arquivo de Workspace Criado", f"O arquivo '{WORKSPACE_EXCEL_PATH}' foi criado.")
-        
-        wb = openpyxl.load_workbook(WORKSPACE_EXCEL_PATH)
-        if "items" not in wb.sheetnames:
-            QMessageBox.warning(None, "Planilha 'items' Não Encontrada", f"A planilha 'items' não foi encontrada em '{WORKSPACE_EXCEL_PATH}'. Criando uma nova.")
-            ws = wb.create_sheet("items")
-            ws.append(["ID", "Name", "Type", "ParentID", "Description"])
-            wb.save(WORKSPACE_EXCEL_PATH)
-
-        sheet = wb["items"]
-        headers = [cell.value for cell in sheet[1]]
-        
-        header_map = {header: idx for idx, header in enumerate(headers)}
-        
-        for row_idx in range(2, sheet.max_row + 1):
-            row_values = [cell.value for cell in sheet[row_idx]]
-            item_data = {}
-            for col_name, col_idx in header_map.items():
-                item_data[col_name] = row_values[col_idx] if col_idx < len(row_values) else None
-            items.append(item_data)
-            
-    except Exception as e:
-        QMessageBox.critical(None, "Erro ao Carregar Itens do Workspace", f"Erro: {e}")
-    return items
-
-def add_workspace_item_to_excel(item_data):
-    """Adiciona um novo item à planilha 'items' em workspace_data.xlsx."""
-    try:
-        wb = openpyxl.load_workbook(WORKSPACE_EXCEL_PATH)
-        sheet = wb["items"]
-
-        for row in sheet.iter_rows(min_row=2):
-            if row[0].value == item_data["ID"]:
-                QMessageBox.warning(None, "ID Duplicado", f"Um item com o ID '{item_data['ID']}' já existe. Por favor, use um ID único.")
-                return False
-
-        sheet.append([
-            item_data.get("ID"),
-            item_data.get("Name"),
-            item_data.get("Type"),
-            item_data.get("ParentID"),
-            item_data.get("Description")
-        ])
-        wb.save(WORKSPACE_EXCEL_PATH)
-        QMessageBox.information(None, "Item Adicionado", f"Item '{item_data['Name']}' adicionado com sucesso ao Espaço de Trabalho.")
-        return True
-    except FileNotFoundError:
-        QMessageBox.critical(None, "Arquivo Não Encontrado", f"O arquivo '{WORKSPACE_EXCEL_PATH}' não foi encontrado.")
-        return False
-    except KeyError:
-        QMessageBox.critical(None, "Erro de Planilha", f"A planilha 'items' não foi encontrada em '{WORKSPACE_EXCEL_PATH}'.")
-        return False
-    except Exception as e:
-        QMessageBox.critical(None, "Erro ao Adicionar Item", f"Erro ao adicionar item ao workspace: {e}")
-        return False
-
-
 # === JANELA DE LOGIN ===
 class LoginWindow(QWidget):
     """
@@ -326,8 +277,7 @@ class TeamcenterStyleGUI(QMainWindow):
         self.role = user["role"]
         self.tools = load_tools_from_excel()
         self.permissions = load_role_permissions()
-        self.workspace_items_data = [] # Será recarregado ao popular a árvore
-
+        
         self._create_toolbar()
         self._create_main_layout()
 
@@ -400,24 +350,24 @@ class TeamcenterStyleGUI(QMainWindow):
         left_pane_layout.setContentsMargins(0, 0, 0, 0)
 
         self.tree = QTreeWidget()
-        self.tree.setHeaderLabel("Espaço de Trabalho")
-        self._populate_workspace_tree()
+        self.tree.setHeaderLabel("Arquivos do Usuário (.xlsx)")
+        self._populate_workspace_tree() # Agora lista arquivos .xlsx em user_sheets
         self.tree.expandAll()
         self.tree.setContextMenuPolicy(Qt.CustomContextMenu)
         self.tree.customContextMenuRequested.connect(self._show_tree_context_menu)
-        self.tree.itemDoubleClicked.connect(self._open_structure_view_for_item)
+        self.tree.itemDoubleClicked.connect(self._open_file_from_tree) # Abre o arquivo selecionado
 
         search_layout = QHBoxLayout()
         self.item_search_bar = QLineEdit()
-        self.item_search_bar.setPlaceholderText("Pesquisar itens...")
-        self.item_search_bar.returnPressed.connect(self.handle_item_search)
+        self.item_search_bar.setPlaceholderText("Pesquisar arquivos...")
+        self.item_search_bar.returnPressed.connect(self.handle_file_search)
         self.search_items_btn = QPushButton("🔍")
-        self.search_items_btn.clicked.connect(self.handle_item_search)
+        self.search_items_btn.clicked.connect(self.handle_file_search)
 
         search_layout.addWidget(self.item_search_bar)
         search_layout.addWidget(self.search_items_btn)
 
-        left_pane_layout.addWidget(QLabel("Espaço de Trabalho"))
+        left_pane_layout.addWidget(QLabel("Arquivos do Usuário"))
         left_pane_layout.addLayout(search_layout)
         left_pane_layout.addWidget(self.tree)
 
@@ -444,80 +394,56 @@ class TeamcenterStyleGUI(QMainWindow):
         self.setCentralWidget(container)
 
     def _populate_workspace_tree(self):
-        """Popula a árvore com dados carregados de workspace_data.xlsx."""
+        """Popula a árvore com os arquivos .xlsx encontrados em USER_SHEETS_DIR."""
         self.tree.clear()
-        self.workspace_items_data = load_workspace_items_from_excel()
-
-        item_map = {item['ID']: {'data': item, 'children': []} for item in self.workspace_items_data}
         
-        root_items = []
-        for item_id, item_info in item_map.items():
-            parent_id = item_info['data'].get('ParentID')
-            if parent_id == 'ROOT':
-                root_items.append(item_info['data'])
-            elif parent_id in item_map:
-                item_map[parent_id]['children'].append(item_info['data'])
+        # Filtra para incluir apenas arquivos .xlsx e excluir db.xlsx
+        excel_files = [f for f in os.listdir(USER_SHEETS_DIR) if f.endswith('.xlsx') and f != 'db.xlsx']
+        
+        # Opcional: Adicionar uma pasta "Sistema" para db.xlsx e tools.xlsx se quisermos mostrá-los
+        # root_system = QTreeWidgetItem(["Arquivos do Sistema"])
+        # self.tree.addTopLevelItem(root_system)
+        # root_system.addChild(QTreeWidgetItem(["db.xlsx"])) # Placeholder
+        # root_system.addChild(QTreeWidgetItem(["tools.xlsx"])) # Placeholder
 
-        def add_items_to_tree(parent_qtree_item, items_list):
-            for item_data in items_list:
-                icon_map = {
-                    "Project": "📁", "Assembly": "📦", "Part": "📄",
-                    "Component": "🧩", "Document": "📜", "Variant": "💡"
-                }
-                icon = icon_map.get(item_data.get('Type', ''), '❓')
-                
-                q_item = QTreeWidgetItem([f"{icon} {item_data.get('Name', 'N/A')}"])
-                q_item.setData(0, Qt.UserRole, item_data.get('ID'))
-                q_item.setData(1, Qt.UserRole, item_data.get('Name'))
-                q_item.setData(2, Qt.UserRole, item_data.get('Type'))
-                q_item.setData(3, Qt.UserRole, item_data.get('ParentID'))
-                q_item.setData(4, Qt.UserRole, item_data.get('Description'))
-                
-                parent_qtree_item.addChild(q_item)
-                
-                if item_data.get('ID') in item_map and item_map[item_data['ID']]['children']:
-                    add_items_to_tree(q_item, item_map[item_data['ID']]['children'])
 
-        for item_data in root_items:
-            icon_map = {
-                "Project": "📁", "Assembly": "📦", "Part": "📄",
-                "Component": "🧩", "Document": "📜", "Variant": "💡"
-            }
-            icon = icon_map.get(item_data.get('Type', ''), '❓')
-            
-            root_q_item = QTreeWidgetItem([f"{icon} {item_data.get('Name', 'N/A')}"])
-            root_q_item.setData(0, Qt.UserRole, item_data.get('ID'))
-            root_q_item.setData(1, Qt.UserRole, item_data.get('Name'))
-            root_q_item.setData(2, Qt.UserRole, item_data.get('Type'))
-            root_q_item.setData(3, Qt.UserRole, item_data.get('ParentID'))
-            root_q_item.setData(4, Qt.UserRole, item_data.get('Description'))
-            self.tree.addTopLevelItem(root_q_item)
+        if not excel_files:
+            QMessageBox.information(self, "Nenhum Arquivo Encontrado", f"Nenhum arquivo .xlsx encontrado na pasta: {USER_SHEETS_DIR}. Crie arquivos para começar!")
+            return
 
-            if item_data.get('ID') in item_map and item_map[item_data['ID']]['children']:
-                add_items_to_tree(root_q_item, item_map[item_data['ID']]['children'])
+        for filename in sorted(excel_files): # Ordena para exibição consistente
+            file_item = QTreeWidgetItem([filename])
+            file_item.setData(0, Qt.UserRole, os.path.join(USER_SHEETS_DIR, filename)) # Armazena o caminho completo do arquivo
+            self.tree.addTopLevelItem(file_item)
         
         self.tree.expandAll()
 
-    def _open_structure_view_for_item(self, item, column):
+    def _open_file_from_tree(self, item, column):
         """
-        Abre uma nova aba com a StructureViewTool para o item clicado duas vezes.
+        Abre o arquivo Excel selecionado na árvore com a ferramenta apropriada.
         """
-        item_id = item.data(0, Qt.UserRole)
-        if not item_id:
-            QMessageBox.warning(self, "Erro", "Não foi possível obter o ID do item para visualização da estrutura.")
-            return
+        file_path = item.data(0, Qt.UserRole)
+        if not file_path:
+            return # Não é um item de arquivo
 
-        item_name = item.text(0).split(' ', 1)[1].strip()
+        file_name = os.path.basename(file_path)
+        tool_class = EXCEL_TOOL_MAP.get(file_name)
 
-        tab_title = f"Estrutura: {item_name}"
+        tab_title = f"Arquivo: {file_name}"
+        # Se a aba já está aberta, apenas ativa-a
         for i in range(self.tabs.count()):
             if self.tabs.tabText(i) == tab_title:
                 self.tabs.setCurrentIndex(i)
-                QMessageBox.information(self, "Informação", f"A guia para a estrutura de '{item_name}' já está aberta.")
                 return
 
-        structure_tool = StructureViewTool(item_id, item_name)
-        self._open_tab(tab_title, structure_tool)
+        if tool_class:
+            # Se existe um mapeamento, instancie a ferramenta específica com o caminho do arquivo
+            tool_instance = tool_class(file_path=file_path) # Passa o caminho do arquivo
+            self._open_tab(tab_title, tool_instance)
+        else:
+            # Se não houver mapeamento, abra com o visualizador genérico de Excel
+            excel_viewer = ExcelViewerTool(file_path=file_path)
+            self._open_tab(tab_title, excel_viewer)
 
     def _create_mes_pcp_tool_widget(self):
         """Cria o widget para a ferramenta MES (Apontamento Fábrica)."""
@@ -546,7 +472,6 @@ class TeamcenterStyleGUI(QMainWindow):
         form_layout.addWidget(QLabel("Código do Item:"))
         form_layout.addWidget(self.mes_item_code_input)
         form_layout.addWidget(QLabel("Quantidade Produzida:"))
-        form_layout.addWidget(self.mes_quantity_input)
         form_layout.addWidget(QLabel("Hora de Início:"))
         form_layout.addWidget(self.mes_start_time_input)
         form_layout.addWidget(QLabel("Hora de Término:"))
@@ -583,16 +508,17 @@ class TeamcenterStyleGUI(QMainWindow):
         self.mes_start_time_input.clear()
         self.mes_end_time_input.clear()
 
-    def handle_item_search(self):
+    def handle_file_search(self):
         """
-        Realiza uma busca nos itens do espaço de trabalho e exibe os resultados em um diálogo.
+        Realiza uma busca nos nomes dos arquivos Excel e exibe os resultados.
         """
         search_term = self.item_search_bar.text().strip().lower()
         if not search_term:
             QMessageBox.information(self, "Pesquisar", "Por favor, digite um termo de pesquisa.")
             return
 
-        results = [item for item in self.workspace_items_data if search_term in item.get('Name', '').lower() or search_term in item.get('ID', '').lower()]
+        excel_files = [f for f in os.listdir(USER_SHEETS_DIR) if f.endswith('.xlsx') and f != 'db.xlsx']
+        results = [f for f in excel_files if search_term in f.lower()]
         self.display_search_results_dialog(results)
 
     def display_search_results_dialog(self, results):
@@ -600,24 +526,22 @@ class TeamcenterStyleGUI(QMainWindow):
         Exibe os resultados da pesquisa em uma nova janela QDialog.
         """
         dialog = QDialog(self)
-        dialog.setWindowTitle("Resultados da Pesquisa")
+        dialog.setWindowTitle("Resultados da Pesquisa de Arquivos")
         dialog.setGeometry(self.x() + 200, self.y() + 100, 400, 300)
 
         layout = QVBoxLayout(dialog)
         
         if not results:
-            layout.addWidget(QLabel("Nenhum item encontrado correspondente à sua pesquisa."))
+            layout.addWidget(QLabel("Nenhum arquivo encontrado correspondente à sua pesquisa."))
         else:
             list_widget = QListWidget()
-            for item in results:
-                list_item_text = f"{item.get('Name', 'N/A')} ({item.get('ID', 'N/A')})"
-                list_item = QListWidgetItem(list_item_text)
-                list_item.setData(Qt.UserRole, item.get('ID'))
-                list_item.setData(Qt.UserRole + 1, item.get('Name'))
+            for file_name in results:
+                list_item = QListWidgetItem(file_name)
+                list_item.setData(Qt.UserRole, os.path.join(USER_SHEETS_DIR, file_name)) # Store full path
                 list_widget.addItem(list_item)
 
             list_widget.itemDoubleClicked.connect(
-                lambda item_list_widget: self._open_structure_view_for_item_by_data(item_list_widget.data(Qt.UserRole), item_list_widget.data(Qt.UserRole + 1)) or dialog.accept()
+                lambda item_list_widget: self._open_file_from_tree(item_list_widget, 0) or dialog.accept()
             ) 
             layout.addWidget(list_widget)
 
@@ -626,42 +550,6 @@ class TeamcenterStyleGUI(QMainWindow):
         layout.addWidget(close_btn)
 
         dialog.exec_()
-
-    def _open_structure_view_for_item_by_data(self, item_id, item_name):
-        """Função auxiliar para abrir a visualização da estrutura diretamente do ID e Nome."""
-        tab_title = f"Estrutura: {item_name}"
-        for i in range(self.tabs.count()):
-            if self.tabs.tabText(i) == tab_title:
-                self.tabs.setCurrentIndex(i)
-                QMessageBox.information(self, "Informação", f"A guia para a estrutura de '{item_name}' já está aberta.")
-                return
-
-        structure_tool = StructureViewTool(item_id, item_name)
-        self._open_tab(tab_title, structure_tool)
-
-    def find_qtree_item_by_id(self, item_id):
-        """
-        Função auxiliar para encontrar um QTreeWidgetItem pelo seu ID armazenado (Qt.UserRole).
-        Realiza uma busca recursiva na árvore.
-        """
-        def search_item(parent_item, target_id):
-            for i in range(parent_item.childCount()):
-                child_item = parent_item.child(i)
-                if child_item.data(0, Qt.UserRole) == target_id:
-                    return child_item
-                found_in_children = search_item(child_item, target_id)
-                if found_in_children:
-                    return found_in_children
-            return None
-
-        for i in range(self.tree.topLevelItemCount()):
-            top_item = self.tree.topLevelItem(i)
-            if top_item.data(0, Qt.UserRole) == item_id:
-                return top_item
-            found = search_item(top_item, item_id)
-            if found:
-                return found
-        return None
 
     def _open_tab(self, title, widget_instance):
         """
@@ -689,44 +577,38 @@ class TeamcenterStyleGUI(QMainWindow):
             self.login.show()
 
     def _show_tree_context_menu(self, pos):
-        """Exibe um menu de contexto para itens na visualização em árvore."""
+        """Exibe um menu de contexto para itens (arquivos) na visualização em árvore."""
         item = self.tree.itemAt(pos)
         
         menu = QMenu()
 
-        add_root_item_action = menu.addAction("➕ Adicionar Novo Item Raiz")
-        add_root_item_action.triggered.connect(self._add_new_root_item)
+        # Adicionar uma opção para criar um novo arquivo .xlsx vazio, se desejado
+        # Exemplo: menu.addAction("➕ Criar Novo Arquivo .xlsx (Simulado)")
 
-        if item:
-            item_id = item.data(0, Qt.UserRole)
-            item_name = item.data(1, Qt.UserRole) or item.text(0).split(' ', 1)[1].strip()
-
+        if item: # Se um arquivo foi clicado
+            file_path = item.data(0, Qt.UserRole)
+            file_name = os.path.basename(file_path)
+            
             menu.addSeparator()
+            menu.addAction("🔍 Abrir Arquivo", lambda: self._open_file_from_tree(item, 0))
             
-            menu.addAction("🔍 Ver Detalhes/Estrutura", lambda: self._open_structure_view_for_item(item, 0))
-            menu.addAction("✏️ Editar Propriedades (Simulado)", lambda: QMessageBox.information(self, "Ação Simulada", f"Editando propriedades para: {item_name} (ação simulada)"))
-            menu.addAction("❌ Excluir Item (Simulado)", lambda: QMessageBox.warning(self, "Ação Simulada", f"Excluindo: {item_name} (ação simulada)"))
-            
-            add_subitem_action = menu.addAction("➕ Adicionar Subitem")
-            add_subitem_action.triggered.connect(lambda: self._add_new_subitem(item_id, item_name))
+            # Opções para o StructureViewTool
+            # Se o arquivo contiver uma planilha "structure", oferecer para abrir a estrutura
+            try:
+                wb = openpyxl.load_workbook(file_path)
+                if "structure" in wb.sheetnames:
+                    menu.addAction("📊 Visualizar Estrutura", lambda: self._open_tab(f"Estrutura: {file_name}", StructureViewTool(file_path=file_path, sheet_name="structure")))
+            except Exception:
+                pass # Ignora se o arquivo não puder ser lido ou não tiver a aba
 
+            menu.addAction("✏️ Renomear Arquivo (Simulado)", lambda: QMessageBox.information(self, "Ação Simulada", f"Renomeando: {file_name} (ação simulada)"))
+            menu.addAction("❌ Excluir Arquivo (Simulado)", lambda: QMessageBox.warning(self, "Ação Simulada", f"Excluindo: {file_name} (ação simulada)"))
+            
         menu.exec_(self.tree.viewport().mapToGlobal(pos))
 
-    def _add_new_root_item(self):
-        """Abre um diálogo para adicionar um novo item de nível superior ao espaço de trabalho."""
-        dialog = AddItemDialog(parent_id="ROOT", parent_name="ROOT", parent=self)
-        if dialog.exec_() == QDialog.Accepted:
-            item_data = dialog.item_data
-            if add_workspace_item_to_excel(item_data):
-                self._populate_workspace_tree()
-    
-    def _add_new_subitem(self, parent_id, parent_name):
-        """Abre um diálogo para adicionar um novo subitem a um pai selecionado no espaço de trabalho."""
-        dialog = AddItemDialog(parent_id=parent_id, parent_name=parent_name, parent=self)
-        if dialog.exec_() == QDialog.Accepted:
-            item_data = dialog.item_data
-            if add_workspace_item_to_excel(item_data):
-                self._populate_workspace_tree()
+    # _add_new_root_item e _add_new_subitem são removidos ou alterados drasticamente
+    # pois não há mais um 'workspace_data.xlsx' para adicionar items de forma genérica.
+    # A adição de dados agora ocorrerá dentro das ferramentas específicas.
 
     def _show_tab_context_menu(self, pos):
         """Exibe um menu de contexto para as abas no widget de abas."""
