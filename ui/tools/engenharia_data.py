@@ -7,32 +7,29 @@ from PyQt5.QtCore import Qt
 DEFAULT_DATA_EXCEL_FILENAME = "engenharia.xlsx"
 DEFAULT_SHEET_NAME = "Estrutura" # Nome da planilha padrão para esta ferramenta
 
-# Cabeçalhos padrão para engenharia.xlsx - Usados quando a planilha está vazia ou é nova.
-# Estes serão sobrescritos pelos cabeçalhos reais do arquivo se existirem.
 ENGENHARIA_HEADERS = [
     "part_number", "parent_part_number", "quantidade", "materia_prima"
 ]
 
 class EngenhariaDataTool(QWidget):
     """
-    GUI para gerenciar dados de Engenharia (estrutura de componentes e matérias-primas).
+    GUI para gerenciar dados de Engenharia.
     Permite visualizar, adicionar e salvar informações em 'engenharia.xlsx'.
-    Permite redimensionamento interativo de colunas e linhas, e seleção de abas.
     Os cabeçalhos da tabela são dinamicamente carregados do arquivo Excel.
     """
-    def __init__(self, file_path=None):
+    def __init__(self, file_path=None, sheet_name=None): # Adicionado parâmetro sheet_name
         super().__init__()
-        # Define o caminho completo para o arquivo Excel.
         if file_path:
             self.file_path = file_path
         else:
             project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
             self.file_path = os.path.join(project_root, 'user_sheets', DEFAULT_DATA_EXCEL_FILENAME)
+        
+        self.sheet_name = sheet_name if sheet_name else DEFAULT_SHEET_NAME # Usa sheet_name passado ou padrão
 
         self.setWindowTitle(f"Engenharia (Dados): {os.path.basename(self.file_path)}")
         self.layout = QVBoxLayout(self)
 
-        # Layout do cabeçalho com nome do arquivo e controles da planilha
         header_layout = QHBoxLayout()
         self.file_name_label = QLabel(f"<b>Arquivo:</b> {os.path.basename(self.file_path)}")
         header_layout.addWidget(self.file_name_label)
@@ -49,7 +46,6 @@ class EngenhariaDataTool(QWidget):
         header_layout.addWidget(self.refresh_sheets_btn)
         self.layout.addLayout(header_layout)
 
-        # Tabela para exibir e editar os dados
         self.table = QTableWidget()
         self.table.setEditTriggers(QTableWidget.DoubleClicked | QTableWidget.AnyKeyPressed)
         self.table.setAlternatingRowColors(True)
@@ -57,7 +53,6 @@ class EngenhariaDataTool(QWidget):
         self.table.verticalHeader().setSectionResizeMode(QHeaderView.Interactive)
         self.layout.addWidget(self.table)
 
-        # Botões de controle
         button_layout = QHBoxLayout()
         self.add_row_btn = QPushButton("Adicionar Linha")
         self.add_row_btn.clicked.connect(self._add_empty_row)
@@ -99,19 +94,19 @@ class EngenhariaDataTool(QWidget):
                 for sheet_name in sheet_names:
                     self.sheet_selector.addItem(sheet_name)
                 
-                default_index = self.sheet_selector.findText(DEFAULT_SHEET_NAME)
+                # Prioriza a sheet padrão (self.sheet_name) se existir, caso contrário, seleciona a primeira
+                default_index = self.sheet_selector.findText(self.sheet_name)
                 if default_index != -1:
                     self.sheet_selector.setCurrentIndex(default_index)
                 elif sheet_names:
-                    self.sheet_selector.setCurrentIndex(0)
-                else:
-                    self.sheet_selector.setCurrentIndex(0)
-
+                    self.sheet_selector.setCurrentIndex(0) # Seleciona a primeira sheet disponível
+                # Se nenhuma sheet existir, o índice atual permanece -1, tratado por load_data
+            
             self._load_data_from_selected_sheet()
 
         except Exception as e:
             QMessageBox.critical(self, "Erro ao Listar Planilhas", f"Erro ao listar planilhas em '{os.path.basename(self.file_path)}': {e}")
-            self.sheet_selector.addItem(DEFAULT_SHEET_NAME)
+            self.sheet_selector.addItem(DEFAULT_SHEET_NAME) # Fallback
             self.table.setRowCount(0)
             self.table.setColumnCount(0)
 
@@ -142,20 +137,16 @@ class EngenhariaDataTool(QWidget):
 
             sheet = wb[current_sheet_name]
 
-            # Carrega os cabeçalhos da primeira linha da planilha
             headers = [cell.value for cell in sheet[1]] if sheet.max_row > 0 else []
-            if not headers: # Fallback se a planilha estiver completamente vazia (sem cabeçalhos)
+            if not headers: 
                 headers = ENGENHARIA_HEADERS
             
             self.table.setColumnCount(len(headers))
             self.table.setHorizontalHeaderLabels(headers)
 
-            # Carrega os dados a partir da segunda linha
             data = []
             for row in sheet.iter_rows(min_row=2):
-                # Garante que a linha tenha células suficientes para evitar IndexError
                 row_values = [cell.value for cell in row]
-                # Se a linha for mais curta que os cabeçalhos, preenche com vazios
                 while len(row_values) < len(headers):
                     row_values.append("")
                 data.append(row_values)
@@ -188,60 +179,39 @@ class EngenhariaDataTool(QWidget):
             return
 
         try:
-            wb = None
-            if not os.path.exists(self.file_path):
-                wb = openpyxl.Workbook()
-                ws = wb.active
-                ws.title = current_sheet_name
+            wb = openpyxl.load_workbook(self.file_path)
+            if current_sheet_name not in wb.sheetnames:
+                ws = wb.create_sheet(current_sheet_name)
                 
-                # Usa os cabeçalhos da tabela atual ou os padrões se a tabela estiver vazia
                 headers_to_save = [self.table.horizontalHeaderItem(col).text() for col in range(self.table.columnCount())]
                 if not headers_to_save:
                     headers_to_save = ENGENHARIA_HEADERS
                 ws.append(headers_to_save)
                 
-                wb.save(self.file_path)
                 QMessageBox.information(self, "Arquivo e Planilha Criados", f"Novo arquivo '{os.path.basename(self.file_path)}' com planilha '{current_sheet_name}' criado.")
-                self._populate_sheet_selector() 
             else:
-                wb = openpyxl.load_workbook(self.file_path)
-                if current_sheet_name not in wb.sheetnames:
-                    ws = wb.create_sheet(current_sheet_name)
-                    headers_to_save = [self.table.horizontalHeaderItem(col).text() for col in range(self.table.columnCount())]
-                    if not headers_to_save:
-                        headers_to_save = ENGENHARIA_HEADERS
-                    ws.append(headers_to_save)
-                    wb.save(self.file_path)
-                    QMessageBox.information(self, "Planilha Criada", f"Nova planilha '{current_sheet_name}' criada em '{os.path.basename(self.file_path)}'.")
-                    self._populate_sheet_selector()
-
-            sheet = wb[current_sheet_name]
+                ws = wb[current_sheet_name]
             
-            # Limpa os dados existentes na planilha, mantendo a primeira linha (cabeçalho)
-            for row_idx in range(sheet.max_row, 1, -1):
-                sheet.delete_rows(row_idx)
+            for row_idx in range(ws.max_row, 1, -1):
+                ws.delete_rows(row_idx)
 
-            # Obtém os cabeçalhos da tabela atual para salvar
             current_headers = [self.table.horizontalHeaderItem(col).text() for col in range(self.table.columnCount())]
             
-            # Atualiza os cabeçalhos da planilha se forem diferentes dos da tabela
-            existing_sheet_headers = [cell.value for cell in sheet[1]]
+            existing_sheet_headers = [cell.value for cell in ws[1]] if ws.max_row > 0 else []
             if existing_sheet_headers != current_headers:
-                # Remove a linha de cabeçalho existente
-                sheet.delete_rows(1)
-                # Insere os novos cabeçalhos na primeira linha
-                sheet.insert_rows(1)
-                sheet.append(current_headers) # append adds to the first empty row, which is now row 1
-            elif not existing_sheet_headers and current_headers: # Caso a planilha estivesse vazia mas a tabela tem headers
-                sheet.append(current_headers)
+                if ws.max_row > 0:
+                    ws.delete_rows(1)
+                ws.insert_rows(1)
+                ws.append(current_headers) 
+            elif not existing_sheet_headers and current_headers:
+                ws.append(current_headers)
 
-            # Percorre o QTableWidget e adiciona as linhas ao Excel
             for row_idx in range(self.table.rowCount()):
                 row_data = []
                 for col_idx in range(self.table.columnCount()):
                     item = self.table.item(row_idx, col_idx)
                     row_data.append(item.text() if item is not None else "")
-                sheet.append(row_data)
+                ws.append(row_data)
 
             wb.save(self.file_path)
             QMessageBox.information(self, "Dados Salvos", f"Dados de '{current_sheet_name}' salvos com sucesso em '{os.path.basename(self.file_path)}'.")
@@ -262,9 +232,11 @@ if __name__ == "__main__":
     os.makedirs(test_file_dir, exist_ok=True)
     test_file_path = os.path.join(test_file_dir, DEFAULT_DATA_EXCEL_FILENAME)
     
-    # Criar um workbook vazio se não existir para teste
     if not os.path.exists(test_file_path):
         wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = DEFAULT_SHEET_NAME
+        ws.append(ENGENHARIA_HEADERS)
         wb.save(test_file_path)
 
     window = EngenhariaDataTool(file_path=test_file_path)

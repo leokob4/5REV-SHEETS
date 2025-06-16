@@ -8,12 +8,11 @@ DEFAULT_DATA_EXCEL_FILENAME = "bom_data.xlsx"
 DEFAULT_SHEET_NAME = "BOM"
 
 BOM_HEADERS = ["ID do BOM", "ID do Componente", "Nome do Componente", "Quantidade", "Unidade", "Ref Designator"]
-# New headers from engenharia.xlsx mapping
 ENGENHARIA_BOM_MAP = {
     "part_number": "ID do Componente",
     "parent_part_number": "ID do BOM",
     "quantidade": "Quantidade",
-    "materia_prima": "Tipo (Matéria Prima)" # Custom column for BOM view
+    "materia_prima": "Tipo (Matéria Prima)" 
 }
 
 class BomManagerTool(QWidget):
@@ -79,13 +78,11 @@ class BomManagerTool(QWidget):
         button_layout.addWidget(self.refresh_btn)
         self.layout.addLayout(button_layout)
 
-        # Disable editing if opening engenharia.xlsx, as BOM Manager is for viewing that as BOM, not editing its raw data
         if self.is_engenharia_file:
             self.add_row_btn.setEnabled(False)
             self.save_btn.setEnabled(False)
             self.table.setEditTriggers(QTableWidget.NoEditTriggers)
             QMessageBox.information(self, "Modo Somente Leitura", "Ao visualizar dados de engenharia como BOM, esta ferramenta opera em modo somente leitura. Para editar, use a ferramenta 'Engenharia (Dados)'.")
-
 
         self._populate_sheet_selector()
 
@@ -114,15 +111,14 @@ class BomManagerTool(QWidget):
                 for sheet_name in sheet_names:
                     self.sheet_selector.addItem(sheet_name)
                 
-                # Try to set the sheet passed in constructor, else default
+                # Prioriza a sheet padrão (self.sheet_name) se existir, caso contrário, seleciona a primeira
                 default_index = self.sheet_selector.findText(self.sheet_name)
                 if default_index != -1:
                     self.sheet_selector.setCurrentIndex(default_index)
-                elif sheet_names:
+                elif sheet_names: # Se a padrão não for encontrada, mas outras sheets existirem, seleciona a primeira
                     self.sheet_selector.setCurrentIndex(0)
-                else:
-                    self.sheet_selector.setCurrentIndex(0)
-
+                # Se nenhuma sheet existir, o índice atual permanece -1, tratado por load_data
+            
             self._load_data_from_selected_sheet()
 
         except Exception as e:
@@ -158,85 +154,66 @@ class BomManagerTool(QWidget):
 
             sheet = wb[current_sheet_name]
 
-            # Determine headers to use for the table
             source_headers = [cell.value for cell in sheet[1]] if sheet.max_row > 0 else []
             display_headers = []
             data_to_display = []
 
             if self.is_engenharia_file:
-                # Mapeia cabeçalhos de engenharia.xlsx para cabeçalhos BOM
-                # Cria uma lista de cabeçalhos de exibição com base no mapeamento e na ordem de BOM_HEADERS
-                # Se um cabeçalho BOM_HEADERS não estiver no mapeamento, ele será adicionado como está.
-                display_headers = list(BOM_HEADERS) # Start with standard BOM headers
+                display_headers = list(BOM_HEADERS) 
                 
-                # Create a reverse map for easy lookup of original column indices
                 source_header_idx_map = {h: idx for idx, h in enumerate(source_headers)}
 
-                # Prepare the data by mapping engenharia.xlsx columns to BOM view
                 for row_idx in range(2, sheet.max_row + 1):
                     row_values = [cell.value for cell in sheet[row_idx]]
-                    mapped_row = [""] * len(BOM_HEADERS) # Initialize with empty strings
+                    mapped_row = [""] * len(BOM_HEADERS) 
 
-                    # Mapeia part_number para "ID do Componente"
                     pn_idx = source_header_idx_map.get("part_number")
                     if pn_idx is not None and pn_idx < len(row_values):
                         mapped_row[BOM_HEADERS.index("ID do Componente")] = row_values[pn_idx]
 
-                    # Mapeia parent_part_number para "ID do BOM"
                     ppn_idx = source_header_idx_map.get("parent_part_number")
                     if ppn_idx is not None and ppn_idx < len(row_values):
                         mapped_row[BOM_HEADERS.index("ID do BOM")] = row_values[ppn_idx]
                     
-                    # Mapeia quantidade para "Quantidade"
                     qty_idx = source_header_idx_map.get("quantidade")
                     if qty_idx is not None and qty_idx < len(row_values):
                         mapped_row[BOM_HEADERS.index("Quantidade")] = row_values[qty_idx]
 
-                    # Mapeia materia_prima para uma coluna "Tipo (Matéria Prima)" ou similar
                     mp_idx = source_header_idx_map.get("materia_prima")
                     if mp_idx is not None and mp_idx < len(row_values):
-                        # Add a new column if "Tipo (Matéria Prima)" is not in BOM_HEADERS
                         if "Tipo (Matéria Prima)" not in display_headers:
                             display_headers.append("Tipo (Matéria Prima)")
-                            # Expand mapped_row to accommodate the new column for already processed rows
                             for existing_row in data_to_display:
                                 existing_row.append("")
                         
                         mapped_row_idx = display_headers.index("Tipo (Matéria Prima)")
-                        if mapped_row_idx < len(mapped_row): # Ensure we don't go out of bounds if headers are changing mid-loop
-                            mapped_row[mapped_row_idx] = row_values[mp_idx]
-                        else: # Extend if necessary
-                            mapped_row.append(row_values[mp_idx])
+                        while len(mapped_row) <= mapped_row_idx:
+                            mapped_row.append("")
+                        mapped_row[mapped_row_idx] = row_values[mp_idx]
 
-                    # Include any other original headers not explicitly mapped
                     for h_idx, h_name in enumerate(source_headers):
                         if h_name not in ENGENHARIA_BOM_MAP:
                             if h_name not in display_headers:
                                 display_headers.append(h_name)
                                 for existing_row in data_to_display:
-                                    existing_row.append("") # Pad existing rows
+                                    existing_row.append("") 
                             
-                            # Find position in display_headers
                             display_idx = display_headers.index(h_name)
-                            # Ensure mapped_row has enough elements
                             while len(mapped_row) <= display_idx:
                                 mapped_row.append("")
                             if h_idx < len(row_values):
                                 mapped_row[display_idx] = row_values[h_idx]
 
-                    # Adjust mapped_row length to match current display_headers length
                     while len(mapped_row) < len(display_headers):
                         mapped_row.append("")
 
                     data_to_display.append(mapped_row)
 
-                # Finalize display headers, ensuring standard BOM headers come first
                 final_display_headers = [h for h in BOM_HEADERS if h in display_headers] + \
                                         [h for h in display_headers if h not in BOM_HEADERS]
                 display_headers = final_display_headers
 
             else:
-                # Default behavior for non-engenharia.xlsx files
                 if not source_headers:
                     display_headers = BOM_HEADERS
                 else:
@@ -256,7 +233,6 @@ class BomManagerTool(QWidget):
                     item = QTableWidgetItem(str(cell_value) if cell_value is not None else "")
                     self.table.setItem(row_idx, col_idx, item)
 
-            # Re-apply read-only status based on file type
             if self.is_engenharia_file:
                 self.table.setEditTriggers(QTableWidget.NoEditTriggers)
             else:
@@ -274,7 +250,7 @@ class BomManagerTool(QWidget):
 
     def _save_data(self):
         """Salva dados do QTableWidget de volta para a planilha Excel, mantendo cabeçalhos existentes ou usando padrão."""
-        if self.is_engenharia_file: # Prevent saving if it's the engenharia.xlsx file being viewed as BOM
+        if self.is_engenharia_file: 
             QMessageBox.warning(self, "Ação Não Permitida", "Esta ferramenta está visualizando dados de engenharia em modo somente leitura. Não é possível salvar alterações aqui.")
             return
 
@@ -288,55 +264,39 @@ class BomManagerTool(QWidget):
             return
 
         try:
-            wb = None
-            if not os.path.exists(self.file_path):
-                wb = openpyxl.Workbook()
-                ws = wb.active
-                ws.title = current_sheet_name
+            wb = openpyxl.load_workbook(self.file_path)
+            if current_sheet_name not in wb.sheetnames:
+                ws = wb.create_sheet(current_sheet_name)
                 
                 headers_to_save = [self.table.horizontalHeaderItem(col).text() for col in range(self.table.columnCount())]
                 if not headers_to_save:
                     headers_to_save = BOM_HEADERS
                 ws.append(headers_to_save)
                 
-                wb.save(self.file_path)
-                QMessageBox.information(self, "Arquivo e Planilha Criados", f"Novo arquivo '{os.path.basename(self.file_path)}' com planilha '{current_sheet_name}' criado.")
-                self._populate_sheet_selector() 
+                QMessageBox.information(self, "Arquivo e Planilha Criados", f"Nova planilha '{current_sheet_name}' criada em '{os.path.basename(self.file_path)}'.")
             else:
-                wb = openpyxl.load_workbook(self.file_path)
-                if current_sheet_name not in wb.sheetnames:
-                    ws = wb.create_sheet(current_sheet_name)
-                    headers_to_save = [self.table.horizontalHeaderItem(col).text() for col in range(self.table.columnCount())]
-                    if not headers_to_save:
-                        headers_to_save = BOM_HEADERS
-                    ws.append(headers_to_save)
-                    wb.save(self.file_path)
-                    QMessageBox.information(self, "Planilha Criada", f"Nova planilha '{current_sheet_name}' criada em '{os.path.basename(self.file_path)}'.")
-                    self._populate_sheet_selector()
-
-            sheet = wb[current_sheet_name]
+                ws = wb[current_sheet_name]
             
-            for row_idx in range(sheet.max_row, 1, -1):
-                sheet.delete_rows(row_idx)
+            for row_idx in range(ws.max_row, 1, -1):
+                ws.delete_rows(row_idx)
 
             current_headers = [self.table.horizontalHeaderItem(col).text() for col in range(self.table.columnCount())]
-            if not current_headers:
-                current_headers = BOM_HEADERS
-            
-            existing_sheet_headers = [cell.value for cell in sheet[1]]
+            existing_sheet_headers = [cell.value for cell in ws[1]] if ws.max_row > 0 else []
+
             if existing_sheet_headers != current_headers:
-                sheet.delete_rows(1)
-                sheet.insert_rows(1)
-                sheet.append(current_headers)
+                if ws.max_row > 0: 
+                    ws.delete_rows(1)
+                ws.insert_rows(1)
+                ws.append(current_headers) 
             elif not existing_sheet_headers and current_headers:
-                sheet.append(current_headers)
+                ws.append(current_headers)
             
             for row_idx in range(self.table.rowCount()):
                 row_data = []
                 for col_idx in range(self.table.columnCount()):
                     item = self.table.item(row_idx, col_idx)
                     row_data.append(item.text() if item is not None else "")
-                sheet.append(row_data)
+                ws.append(row_data)
 
             wb.save(self.file_path)
             QMessageBox.information(self, "Dados Salvos", f"Dados de '{current_sheet_name}' salvos com sucesso em '{os.path.basename(self.file_path)}'.")
@@ -345,7 +305,7 @@ class BomManagerTool(QWidget):
 
     def _add_empty_row(self):
         """Adiciona uma linha vazia ao QTableWidget para nova entrada de dados."""
-        if self.is_engenharia_file: # Prevent adding rows if it's the engenharia.xlsx file being viewed as BOM
+        if self.is_engenharia_file: 
             QMessageBox.warning(self, "Ação Não Permitida", "Esta ferramenta está visualizando dados de engenharia em modo somente leitura. Não é possível adicionar linhas.")
             return
 
@@ -363,6 +323,9 @@ if __name__ == "__main__":
     
     if not os.path.exists(test_file_path):
         wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = DEFAULT_SHEET_NAME
+        ws.append(BOM_HEADERS)
         wb.save(test_file_path)
 
     window = BomManagerTool(file_path=test_file_path)

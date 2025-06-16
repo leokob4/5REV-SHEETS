@@ -1,10 +1,371 @@
-criar atalho no gui.py para executar a tool create_engenharia_xlsx.py (somente administrador, conforme no sistema já existente, se quiser posso compartilhar a estrutura do projeto)
+esquecemos de colocar o nome da página na qual está a coluna na hora de gerar a planilha "db_db" do db.xlsx, vamos colocar essa variável na terceira coluna, na quarta coluna já pode inicializar o cabeçalho "descr_variavel",seguem os dados para atualizarmos nossas planilhas de usuário, as planilhas de aplicativo não tiveram mudança,
+lembre que o output da nossa função de exportar dados para o "db_db" deverá ser como a seguir(mesmo que sem alteração na função, somente nos dados contidos nas user_sheets e cabeçalho):
+Arquivo (Caminho);	Nome da Coluna (Cabeçalho);	pagina_arquivo;	descr_variavel;
+user_sheets\RPI.xlsx;	id_rota;	obs IA olhar em runtime e salvar;	Identificador único para a rota de produção.;
+user_sheets\RPI.xlsx;	part_number;	obs IA olhar em runtime e salvar;	Número de identificação da peça ou item associado à rota.;
+user_sheets\RPI.xlsx;	description;	obs IA olhar em runtime e salvar;	Descrição detalhada da rota ou do item principal da rota.;
+user_sheets\RPI.xlsx;	recurso;	obs IA olhar em runtime e salvar;	Recurso (máquina, posto de trabalho) utilizado na operação da rota.;
+user_sheets\RPI.xlsx;	operacao;	obs IA olhar em runtime e salvar;	Etapa específica do processo de produção dentro da rota.;
+user_sheets\RPI.xlsx;	tempo_ciclo;	obs IA olhar em runtime e salvar;	Tempo necessário para completar um ciclo de produção em uma operação.;
+user_sheets\RPI.xlsx;	quantidade_por_ciclo;	obs IA olhar em runtime e salvar;	Quantidade de unidades produzidas em um ciclo de operação.;
+user_sheets\RPI.xlsx;	observacoes;	obs IA olhar em runtime e salvar;	Campo para notas ou informações adicionais sobre a rota.;
+user_sheets\RPI.xlsx;	deposito_padrao;	obs IA olhar em runtime e salvar;	Depósito principal para matéria-prima ou componentes desta rota.;
+user_sheets\RPI.xlsx;	ferramenta;	obs IA olhar em runtime e salvar;	Nome ou código da ferramenta específica utilizada na operação da rota.;
+user_sheets\RPI.xlsx;	deposito_ferramenta;	obs IA olhar em runtime e salvar;	Depósito onde a ferramenta utilizada nesta rota está armazenada.;
+user_sheets\RPI.xlsx;	endereco_ferramenta;	obs IA olhar em runtime e salvar;	Endereço físico da ferramenta dentro do depósito.;
+user_sheets\RPI.xlsx;	recurso_tipo;	obs IA olhar em runtime e salvar;	Categoria do recurso (ex: Máquina, Posto de Trabalho, Mão de Obra indireta).;
+user_sheets\RPI.xlsx;	operacao_sequencia;	obs IA olhar em runtime e salvar;	Ordem sequencial da operação dentro da rota de produção.;
+user_sheets\RPI.xlsx;	operacao_instrucoes;	obs IA olhar em runtime e salvar;	Instruções detalhadas ou procedimento padrão para a execução da operação.;
+user_sheets\RPI.xlsx;	set_up_time;	obs IA olhar em runtime e salvar;	Tempo de preparação (ajuste, configuração) necessário antes da operação iniciar.;
+user_sheets\RPI.xlsx;	down_time_estimado;	obs IA olhar em runtime e salvar;	Tempo de inatividade estimado para a operação ou recurso.;
+user_sheets\RPI.xlsx;	criterio_qualidade;	obs IA olhar em runtime e salvar;	Padrões ou critérios para inspeção de qualidade nesta operação.;
+user_sheets\RPI.xlsx;	tolerancia_qualidade;	obs IA olhar em runtime e salvar;	Variação aceitável ou limite de tolerância para o critério de qualidade.;
+user_sheets\RPI.xlsx;	necessidade_mao_obra;	obs IA olhar em runtime e salvar;	Número de operadores ou colaboradores necessários para a operação.;
+user_sheets\RPI.xlsx;	habilidade_necessaria;	obs IA olhar em runtime e salvar;	Qualificação ou tipo de habilidade exigida para o operador nesta operação.;
+user_sheets\RPI.xlsx;	custo_hora_recurso;	obs IA olhar em runtime e salvar;	Custo operacional por hora do recurso utilizado na operação.;
+user_sheets\RPI.xlsx;	custo_hora_mao_obra;	obs IA olhar em runtime e salvar;	Custo por hora da mão de obra alocada à operação.;
+user_sheets\RPI.xlsx;	lote_minimo_producao;	obs IA olhar em runtime e salvar;	Tamanho mínimo de lote para esta rota de produção.;
+user_sheets\RPI.xlsx;	versao_rota;	obs IA olhar em runtime e salvar;	Número da versão ou revisão da rota de produção.;
+user_sheets\RPI.xlsx;	data_ultima_revisao_rota;	obs IA olhar em runtime e salvar;	Data da última alteração ou revisão da rota de produção.;
+user_sheets\RPI.xlsx;	responsavel_revisao_rota;	obs IA olhar em runtime e salvar;	Colaborador responsável pela última revisão da rota.;
+user_sheets\RPI.xlsx;	custo_total_rota_estimado;	obs IA olhar em runtime e salvar;	Custo total estimado para completar toda a rota de produção.;
+user_sheets\RPI.xlsx;	tempo_total_rota_estimado;	obs IA olhar em runtime e salvar;	Tempo total estimado para completar toda a rota de produção.;
+user_sheets\colaboradores.xlsx;	id_colab;	obs IA olhar em runtime e salvar;	Identificador único do colaborador.;
+user_sheets\colaboradores.xlsx;	matricula_colab;	obs IA olhar em runtime e salvar;	Número de matrícula do colaborador na empresa.;
+user_sheets\colaboradores.xlsx;	nome_colab;	obs IA olhar em runtime e salvar;	Nome completo do colaborador.;
+user_sheets\colaboradores.xlsx;	data_nasc;	obs IA olhar em runtime e salvar;	Data de nascimento do colaborador.;
+user_sheets\colaboradores.xlsx;	data_contrat;	obs IA olhar em runtime e salvar;	Data de contratação do colaborador.;
+user_sheets\colaboradores.xlsx;	data_disp;	obs IA olhar em runtime e salvar;	Data em que o colaborador estará disponível para novas tarefas/projetos.;
+user_sheets\colaboradores.xlsx;	setor_colab;	obs IA olhar em runtime e salvar;	Setor ou departamento ao qual o colaborador pertence.;
+user_sheets\colaboradores.xlsx;	recurso_colab;	obs IA olhar em runtime e salvar;	Recurso (máquina, ferramenta) principal associado ao colaborador (se aplicável).;
+user_sheets\colaboradores.xlsx;	enabled_colab;	obs IA olhar em runtime e salvar;	Status de habilitação do colaborador no sistema (Ativo/Inativo).;
+user_sheets\colaboradores.xlsx;	cpf;	obs IA olhar em runtime e salvar;	Número de Cadastro de Pessoa Física (CPF) do colaborador.;
+user_sheets\colaboradores.xlsx;	endereco;	obs IA olhar em runtime e salvar;	Endereço residencial completo do colaborador.;
+user_sheets\colaboradores.xlsx;	telefone;	obs IA olhar em runtime e salvar;	Número de telefone para contato do colaborador.;
+user_sheets\colaboradores.xlsx;	email;	obs IA olhar em runtime e salvar;	Endereço de e-mail profissional ou pessoal do colaborador.;
+user_sheets\colaboradores.xlsx;	cargo;	obs IA olhar em runtime e salvar;	Cargo ou função atual do colaborador na empresa.;
+user_sheets\colaboradores.xlsx;	departamento;	obs IA olhar em runtime e salvar;	Departamento principal do colaborador.;
+user_sheets\colaboradores.xlsx;	data_contratacao;	obs IA olhar em runtime e salvar;	Data formal de contratação do colaborador (reafirmação de data_contrat).;
+user_sheets\colaboradores.xlsx;	status_contrato;	obs IA olhar em runtime e salvar;	Status atual do contrato de trabalho (Ativo, Férias, Afastado, Demitido).;
+user_sheets\colaboradores.xlsx;	salario_base;	obs IA olhar em runtime e salvar;	Valor do salário base do colaborador.;
+user_sheets\colaboradores.xlsx;	horas_trabalho_semanais;	obs IA olhar em runtime e salvar;	Número de horas de trabalho semanais previstas para o colaborador.;
+user_sheets\colaboradores.xlsx;	habilidades_principais;	obs IA olhar em runtime e salvar;	Lista de habilidades ou qualificações principais do colaborador.;
+user_sheets\colaboradores.xlsx;	data_ultima_avaliacao;	obs IA olhar em runtime e salvar;	Data da última avaliação de desempenho ou performance do colaborador.;
+user_sheets\colaboradores.xlsx;	supervisor;	obs IA olhar em runtime e salvar;	Nome ou ID do supervisor direto do colaborador.;
+user_sheets\colaboradores.xlsx;	turno_trabalho;	obs IA olhar em runtime e salvar;	Turno de trabalho atribuído ao colaborador.;
+user_sheets\colaboradores.xlsx;	custo_hora_colaborador;	obs IA olhar em runtime e salvar;	Custo por hora da mão de obra do colaborador.;
+user_sheets\colaboradores.xlsx;	motivo_saida;	obs IA olhar em runtime e salvar;	Motivo do desligamento ou saída do colaborador (se aplicável).;
+user_sheets\configurador.xlsx;	id_configurador;	obs IA olhar em runtime e salvar;	Identificador único de um parâmetro ou configuração do sistema.;
+user_sheets\configurador.xlsx;	part_number;	obs IA olhar em runtime e salvar;	Número da peça ou item associado a esta configuração (se aplicável).;
+user_sheets\configurador.xlsx;	description;	obs IA olhar em runtime e salvar;	Descrição geral da configuração ou parâmetro.;
+user_sheets\configurador.xlsx;	config_desc;	obs IA olhar em runtime e salvar;	Descrição específica do valor ou comportamento da configuração.;
+user_sheets\configurador.xlsx;	config_type;	obs IA olhar em runtime e salvar;	Tipo de configuração (ex: numérico, texto, booleano, lista).;
+user_sheets\configurador.xlsx;	ID Config;	obs IA olhar em runtime e salvar;	Identificador da configuração (redundante com id_configurador, se for o mesmo conceito).;
+user_sheets\configurador.xlsx;	Nome Config;	obs IA olhar em runtime e salvar;	Nome ou título descritivo da configuração/parâmetro.;
+user_sheets\configurador.xlsx;	Opção 1;	obs IA olhar em runtime e salvar;	Primeira opção de valor para a configuração (para tipos de lista ou booleanos).;
+user_sheets\configurador.xlsx;	Opção 2;	obs IA olhar em runtime e salvar;	Segunda opção de valor para a configuração.;
+user_sheets\configurador.xlsx;	Item Associado;	obs IA olhar em runtime e salvar;	Item específico ao qual esta configuração se aplica (se não for global).;
+user_sheets\db.xlsx;	id_item;	obs IA olhar em runtime e salvar;	Identificador único para cada item cadastrado (produto, matéria-prima, componente).;
+user_sheets\db.xlsx;	nome_item;	obs IA olhar em runtime e salvar;	Nome comercial ou descritivo do item.;
+user_sheets\db.xlsx;	descricao_detalhada_item;	obs IA olhar em runtime e salvar;	Descrição completa e detalhada das características do item.;
+user_sheets\db.xlsx;	tipo_item;	obs IA olhar em runtime e salvar;	Classificação do item (ex: Matéria-prima, Componente, Produto Acabado, Embalagem).;
+user_sheets\db.xlsx;	unidade_medida_padrao;	obs IA olhar em runtime e salvar;	Unidade de medida padrão para o item (ex: KG, UN, M).;
+user_sheets\db.xlsx;	peso_unitario;	obs IA olhar em runtime e salvar;	Peso de uma única unidade do item.;
+user_sheets\db.xlsx;	volume_unitario;	obs IA olhar em runtime e salvar;	Volume ocupado por uma única unidade do item.;
+user_sheets\db.xlsx;	custo_padrao_unitario;	obs IA olhar em runtime e salvar;	Custo unitário estimado ou padrão para o item.;
+user_sheets\db.xlsx;	custo_medio_unitario;	obs IA olhar em runtime e salvar;	Custo unitário médio ponderado do item em estoque.;
+user_sheets\db.xlsx;	fornecedor_principal;	obs IA olhar em runtime e salvar;	Nome do fornecedor principal para este item.;
+user_sheets\db.xlsx;	marca_item;	obs IA olhar em runtime e salvar;	Marca comercial do item (se aplicável).;
+user_sheets\db.xlsx;	categoria_item;	obs IA olhar em runtime e salvar;	Categoria de classificação do item (ex: Eletrônicos, Metais, Plásticos).;
+user_sheets\db.xlsx;	vida_util_estimada;	obs IA olhar em runtime e salvar;	Vida útil estimada do item em dias ou meses (para perecíveis ou com obsolescência).;
+user_sheets\db.xlsx;	data_cadastro_item;	obs IA olhar em runtime e salvar;	Data em que o item foi cadastrado no sistema.;
+user_sheets\db.xlsx;	status_item;	obs IA olhar em runtime e salvar;	Status atual do item (ex: Ativo, Obsoleto, Descontinuado).;
+user_sheets\db.xlsx;	historico_precos_compra;	obs IA olhar em runtime e salvar;	Referência ou resumo do histórico de preços de compra do item.;
+user_sheets\db.xlsx;	foto_url_item;	obs IA olhar em runtime e salvar;	URL para uma imagem ou foto do item.;
+user_sheets\db.xlsx;	codigo_barras;	obs IA olhar em runtime e salvar;	Código de barras associado ao item para leitura automatizada.;
+user_sheets\db.xlsx;	dados_tecnicos_adicionais;	obs IA olhar em runtime e salvar;	Campo para dados técnicos adicionais em formato livre (JSON, texto).;
+user_sheets\db.xlsx;	prazo_validade_dias;	obs IA olhar em runtime e salvar;	Prazo de validade do item em dias a partir da fabricação/compra.;
+user_sheets\estoque.xlsx;	id_movimentacao;	obs IA olhar em runtime e salvar;	Identificador único de cada transação de movimentação de estoque.;
+user_sheets\estoque.xlsx;	data_movimentacao;	obs IA olhar em runtime e salvar;	Data em que a movimentação de estoque ocorreu.;
+user_sheets\estoque.xlsx;	id_item;	obs IA olhar em runtime e salvar;	Identificador do item que foi movimentado.;
+user_sheets\estoque.xlsx;	tipo_movimentacao;	obs IA olhar em runtime e salvar;	Tipo de transação de estoque (Ex: Entrada por Compra, Saída por Venda, Transferência).;
+user_sheets\estoque.xlsx;	quantidade_movimentada;	obs IA olhar em runtime e salvar;	Quantidade do item que foi movimentada.;
+user_sheets\estoque.xlsx;	deposito_origem;	obs IA olhar em runtime e salvar;	Depósito de onde o item foi movimentado (para saídas e transferências).;
+user_sheets\estoque.xlsx;	deposito_destino;	obs IA olhar em runtime e salvar;	Depósito para onde o item foi movimentado (para entradas e transferências).;
+user_sheets\estoque.xlsx;	lote_item;	obs IA olhar em runtime e salvar;	Número do lote específico do item movimentado (para rastreabilidade).;
+user_sheets\estoque.xlsx;	validade_lote;	obs IA olhar em runtime e salvar;	Data de validade do lote específico do item.;
+user_sheets\estoque.xlsx;	custo_unitario_movimentacao;	obs IA olhar em runtime e salvar;	Custo unitário do item no momento desta movimentação.;
+user_sheets\estoque.xlsx;	referencia_documento;	obs IA olhar em runtime e salvar;	Número ou ID do documento que originou a movimentação (ex: Ordem de Compra, Nota Fiscal).;
+user_sheets\estoque.xlsx;	responsavel_movimentacao;	obs IA olhar em runtime e salvar;	Colaborador responsável pela execução da movimentação de estoque.;
+user_sheets\estoque.xlsx;	saldo_final_deposito;	obs IA olhar em runtime e salvar;	Saldo de estoque do item no depósito após a conclusão da movimentação.;
+user_sheets\estoque.xlsx;	motivo_ajuste;	obs IA olhar em runtime e salvar;	Motivo específico para um ajuste de estoque (ex: inventário, quebra, furto).;
+user_sheets\estoque.xlsx;	status_inspecao_recebimento;	obs IA olhar em runtime e salvar;	Status da inspeção de qualidade no momento do recebimento (Aprovado, Reprovado).;
+user_sheets\estoque.xlsx;	posicao_estoque_fisica;	obs IA olhar em runtime e salvar;	Localização física detalhada do item dentro do depósito (corredor, prateleira).;
+user_sheets\estoque.xlsx;	reserva_para_ordem_producao;	obs IA olhar em runtime e salvar;	ID da Ordem de Produção para a qual este item está reservado.;
+user_sheets\estoque.xlsx;	reserva_para_pedido_venda;	obs IA olhar em runtime e salvar;	ID do Pedido de Venda para o qual este item está reservado.;
+user_sheets\estoque.xlsx;	estoque_em_transito;	obs IA olhar em runtime e salvar;	Quantidade de item que foi expedida mas ainda não foi recebida no destino.;
+user_sheets\estoque.xlsx;	estoque_disponivel_para_venda;	obs IA olhar em runtime e salvar;	Quantidade de item que pode ser vendida ou utilizada imediatamente.;
+user_sheets\financeiro.xlsx;	id_lancamento;	obs IA olhar em runtime e salvar;	Identificador único para cada lançamento financeiro.;
+user_sheets\financeiro.xlsx;	data_lancamento;	obs IA olhar em runtime e salvar;	Data em que o lançamento financeiro ocorreu ou foi registrado.;
+user_sheets\financeiro.xlsx;	tipo_lancamento;	obs IA olhar em runtime e salvar;	Classificação do lançamento como Receita ou Despesa.;
+user_sheets\financeiro.xlsx;	descricao_lancamento;	obs IA olhar em runtime e salvar;	Descrição detalhada do lançamento financeiro.;
+user_sheets\financeiro.xlsx;	valor_lancamento;	obs IA olhar em runtime e salvar;	O valor monetário do lançamento.;
+user_sheets\financeiro.xlsx;	moeda;	obs IA olhar em runtime e salvar;	A moeda em que o valor do lançamento está expresso.;
+user_sheets\financeiro.xlsx;	conta_contabil;	obs IA olhar em runtime e salvar;	Conta contábil associada ao lançamento.;
+user_sheets\financeiro.xlsx;	centro_custo;	obs IA olhar em runtime e salvar;	Centro de custo ou centro de lucro relacionado ao lançamento.;
+user_sheets\financeiro.xlsx;	id_referencia_origem;	obs IA olhar em runtime e salvar;	ID do documento ou transação que originou o lançamento (ex: id_pedido, id_nota_fiscal).;
+user_sheets\financeiro.xlsx;	status_pagamento;	obs IA olhar em runtime e salvar;	Status do pagamento (Pago, Aberto, Atrasado, Parcial).;
+user_sheets\financeiro.xlsx;	data_vencimento;	obs IA olhar em runtime e salvar;	Data de vencimento para pagamentos ou data esperada para recebimentos.;
+user_sheets\financeiro.xlsx;	data_pagamento;	obs IA olhar em runtime e salvar;	Data em que o pagamento foi efetuado ou o recebimento foi concretizado.;
+user_sheets\financeiro.xlsx;	meio_pagamento;	obs IA olhar em runtime e salvar;	Forma como o pagamento foi realizado (ex: Boleto, Pix, Cartão de Crédito).;
+user_sheets\financeiro.xlsx;	banco_origem_destino;	obs IA olhar em runtime e salvar;	Informações do banco de origem ou destino da transação.;
+user_sheets\financeiro.xlsx;	observacoes_financeiras;	obs IA olhar em runtime e salvar;	Campo para observações adicionais relacionadas ao lançamento financeiro.;
+user_sheets\financeiro.xlsx;	imposto_valor;	obs IA olhar em runtime e salvar;	Valor do imposto incidente sobre o lançamento.;
+user_sheets\financeiro.xlsx;	imposto_tipo;	obs IA olhar em runtime e salvar;	Tipo de imposto (ex: ICMS, IPI, PIS/COFINS).;
+user_sheets\financeiro.xlsx;	fornecedor_cliente_associado;	obs IA olhar em runtime e salvar;	ID do fornecedor ou cliente associado a este lançamento.;
+user_sheets\financeiro.xlsx;	conciliado_banco;	obs IA olhar em runtime e salvar;	Indica se o lançamento foi conciliado com o extrato bancário (Sim/Não).;
+user_sheets\financeiro.xlsx;	saldo_conta;	obs IA olhar em runtime e salvar;	Saldo da conta financeira após o lançamento (calculado).;
+user_sheets\manutencao.xlsx;	id_ordem_manutencao;	obs IA olhar em runtime e salvar;	Identificador único de cada ordem de manutenção.;
+user_sheets\manutencao.xlsx;	id_ativo_equipamento;	obs IA olhar em runtime e salvar;	Identificador do ativo ou equipamento que necessita de manutenção.;
+user_sheets\manutencao.xlsx;	tipo_manutencao;	obs IA olhar em runtime e salvar;	Classificação da manutenção (Preventiva, Corretiva, Preditiva).;
+user_sheets\manutencao.xlsx;	data_solicitacao;	obs IA olhar em runtime e salvar;	Data em que a manutenção foi solicitada ou gerada.;
+user_sheets\manutencao.xlsx;	data_inicio_manutencao;	obs IA olhar em runtime e salvar;	Data e hora de início real da manutenção.;
+user_sheets\manutencao.xlsx;	data_fim_manutencao;	obs IA olhar em runtime e salvar;	Data e hora de fim real da manutenção.;
+user_sheets\manutencao.xlsx;	descricao_problema;	obs IA olhar em runtime e salvar;	Descrição do problema que motivou a manutenção.;
+user_sheets\manutencao.xlsx;	acoes_executadas;	obs IA olhar em runtime e salvar;	Descrição das ações tomadas para realizar a manutenção.;
+user_sheets\manutencao.xlsx;	pecas_substituidas;	obs IA olhar em runtime e salvar;	Lista ou descrição das peças que foram substituídas na manutenção.;
+user_sheets\manutencao.xlsx;	custo_pecas_manutencao;	obs IA olhar em runtime e salvar;	Custo total das peças utilizadas na manutenção.;
+user_sheets\manutencao.xlsx;	horas_mao_obra_manutencao;	obs IA olhar em runtime e salvar;	Total de horas de mão de obra dedicadas à manutenção.;
+user_sheets\manutencao.xlsx;	responsavel_manutencao;	obs IA olhar em runtime e salvar;	Colaborador ou equipe responsável pela execução da manutenção.;
+user_sheets\manutencao.xlsx;	status_manutencao;	obs IA olhar em runtime e salvar;	Status atual da ordem de manutenção (Programada, Em Andamento, Concluída).;
+user_sheets\manutencao.xlsx;	proxima_manutencao_programada;	obs IA olhar em runtime e salvar;	Data da próxima manutenção agendada para este ativo/equipamento.;
+user_sheets\manutencao.xlsx;	horimetro_leitura;	obs IA olhar em runtime e salvar;	Leitura do horímetro do equipamento no momento da manutenção (se aplicável).;
+user_sheets\manutencao.xlsx;	km_leitura;	obs IA olhar em runtime e salvar;	Leitura do hodômetro do equipamento em KM (se aplicável a veículos).;
+user_sheets\manutencao.xlsx;	observacoes_manutencao;	obs IA olhar em runtime e salvar;	Campo para observações adicionais sobre a manutenção.;
+user_sheets\manutencao.xlsx;	falha_causa_raiz;	obs IA olhar em runtime e salvar;	Causa raiz identificada para a falha do equipamento.;
+user_sheets\manutencao.xlsx;	criticidade_ativo;	obs IA olhar em runtime e salvar;	Nível de criticidade do ativo (ex: Alta, Média, Baixa) para operações.;
+user_sheets\manutencao.xlsx;	anexo_documentacao_manutencao;	obs IA olhar em runtime e salvar;	Link ou referência para documentação, manuais, ou anexos da manutenção.;
+user_sheets\output.xlsx;	id;	obs IA olhar em runtime e salvar;	Identificador único do item em estoque ou cadastro.;
+user_sheets\output.xlsx;	part_number;	obs IA olhar em runtime e salvar;	Número da peça ou código do item.;
+user_sheets\output.xlsx;	description;	obs IA olhar em runtime e salvar;	Descrição do item.;
+user_sheets\output.xlsx;	unidade_medida_compra;	obs IA olhar em runtime e salvar;	Unidade de medida utilizada ao comprar o item.;
+user_sheets\output.xlsx;	unidade_medida_consumo;	obs IA olhar em runtime e salvar;	Unidade de medida utilizada ao consumir/expedir o item.;
+user_sheets\output.xlsx;	deposito_padrao;	obs IA olhar em runtime e salvar;	Depósito principal onde o item é geralmente armazenado.;
+user_sheets\output.xlsx;	endereco_padrao;	obs IA olhar em runtime e salvar;	Endereço padrão do item dentro do depósito.;
+user_sheets\output.xlsx;	quantidade;	obs IA olhar em runtime e salvar;	Quantidade total atual do item em estoque (soma de todos os locais).;
+user_sheets\output.xlsx;	quantidade_comprada;	obs IA olhar em runtime e salvar;	Quantidade total acumulada do item que foi comprada.;
+user_sheets\output.xlsx;	quantidade_reservada;	obs IA olhar em runtime e salvar;	Quantidade do item que está reservada para ordens de produção ou venda.;
+user_sheets\output.xlsx;	grupo;	obs IA olhar em runtime e salvar;	Classificação do item por grupo (ex: eletrônicos, mecânicos).;
+user_sheets\output.xlsx;	quantidade_disponivel;	obs IA olhar em runtime e salvar;	Quantidade do item disponível para uso ou venda (quantidade - quantidade_reservada).;
+user_sheets\output.xlsx;	estoque_minimo;	obs IA olhar em runtime e salvar;	Nível mínimo de estoque desejado para o item.;
+user_sheets\output.xlsx;	estoque_maximo;	obs IA olhar em runtime e salvar;	Nível máximo de estoque desejado para o item.;
+user_sheets\output.xlsx;	ponto_de_pedido;	obs IA olhar em runtime e salvar;	Nível de estoque que aciona um novo pedido de compra/produção.;
+user_sheets\output.xlsx;	lead_time_reposicao_dias;	obs IA olhar em runtime e salvar;	Tempo em dias para o item ser reposto no estoque.;
+user_sheets\output.xlsx;	custo_unitario_medio;	obs IA olhar em runtime e salvar;	Custo unitário médio ponderado do item em estoque.;
+user_sheets\output.xlsx;	valor_total_estoque;	obs IA olhar em runtime e salvar;	Valor monetário total do item em estoque.;
+user_sheets\output.xlsx;	tipo_item;	obs IA olhar em runtime e salvar;	Classificação do item (ex: matéria-prima, componente, produto acabado).;
+user_sheets\output.xlsx;	fornecedor_principal_id;	obs IA olhar em runtime e salvar;	Identificador do fornecedor principal do item.;
+user_sheets\output.xlsx;	data_ultima_compra;	obs IA olhar em runtime e salvar;	Data da última vez que o item foi comprado.;
+user_sheets\output.xlsx;	data_ultima_saida;	obs IA olhar em runtime e salvar;	Data da última vez que o item saiu do estoque.;
+user_sheets\output.xlsx;	status_item;	obs IA olhar em runtime e salvar;	Status do item no sistema (ativo, obsoleto, descontinuado).;
+user_sheets\output.xlsx;	codigo_barras;	obs IA olhar em runtime e salvar;	Código de barras do item para leitura.;
+user_sheets\output.xlsx;	data_validade;	obs IA olhar em runtime e salvar;	Data de validade do item (se perecível).;
+user_sheets\producao.xlsx;	id_producao_finalizada;	obs IA olhar em runtime e salvar;	Identificador único para cada registro de produção finalizada.;
+user_sheets\producao.xlsx;	id_ordem_producao;	obs IA olhar em runtime e salvar;	Identificador da ordem de produção à qual este registro se refere.;
+user_sheets\producao.xlsx;	part_number_produzido;	obs IA olhar em runtime e salvar;	Número da peça ou código do produto que foi produzido.;
+user_sheets\producao.xlsx;	quantidade_produzida;	obs IA olhar em runtime e salvar;	Quantidade de itens que foram produzidos e finalizados.;
+user_sheets\producao.xlsx;	unidade_medida_produzida;	obs IA olhar em runtime e salvar;	Unidade de medida para a quantidade produzida.;
+user_sheets\producao.xlsx;	data_producao;	obs IA olhar em runtime e salvar;	Data em que a produção foi finalizada.;
+user_sheets\producao.xlsx;	hora_inicio_producao;	obs IA olhar em runtime e salvar;	Hora de início da produção.;
+user_sheets\producao.xlsx;	hora_fim_producao;	obs IA olhar em runtime e salvar;	Hora de fim da produção.;
+user_sheets\producao.xlsx;	responsavel_producao;	obs IA olhar em runtime e salvar;	Colaborador responsável pela finalização da produção.;
+user_sheets\producao.xlsx;	lote_producao_gerado;	obs IA olhar em runtime e salvar;	Número do lote gerado para os itens produzidos.;
+user_sheets\producao.xlsx;	quantidade_refugada;	obs IA olhar em runtime e salvar;	Quantidade de itens que foram descartados ou não passaram no controle de qualidade.;
+user_sheets\producao.xlsx;	motivo_refugo;	obs IA olhar em runtime e salvar;	Motivo específico pelo qual os itens foram refugados.;
+user_sheets\producao.xlsx;	custo_real_producao_unitario;	obs IA olhar em runtime e salvar;	Custo real unitário para produzir o item.;
+user_sheets\producao.xlsx;	destino_estoque;	obs IA olhar em runtime e salvar;	Depósito para onde os itens produzidos foram encaminhados.;
+user_sheets\producao.xlsx;	status_qualidade_lote;	obs IA olhar em runtime e salvar;	Status de qualidade do lote produzido (Aprovado, Reprovado, Retrabalho).;
+user_sheets\producao.xlsx;	tempo_total_operacional;	obs IA olhar em runtime e salvar;	Tempo total gasto nas operações de produção.;
+user_sheets\producao.xlsx;	identificacao_maquina_utilizada;	obs IA olhar em runtime e salvar;	Identificador da máquina principal utilizada na produção.;
+user_sheets\producao.xlsx;	observacoes_producao;	obs IA olhar em runtime e salvar;	Campo para observações adicionais sobre o processo ou resultado da produção.;
+user_sheets\producao.xlsx;	sequencia_operacao_concluida;	obs IA olhar em runtime e salvar;	A última operação da rota que foi concluída para este registro de produção.;
+user_sheets\producao.xlsx;	consumo_materiais_real;	obs IA olhar em runtime e salvar;	Informações sobre o consumo real de matérias-primas na produção.;
+user_sheets\pedidos.xlsx;	id_pedido;	obs IA olhar em runtime e salvar;	Identificador único para cada pedido (compra ou venda).;
+user_sheets\pedidos.xlsx;	tipo_pedido;	obs IA olhar em runtime e salvar;	Classificação do pedido (Compra ou Venda).;
+user_sheets\pedidos.xlsx;	data_emissao_pedido;	obs IA olhar em runtime e salvar;	Data em que o pedido foi emitido ou registrado.;
+user_sheets\pedidos.xlsx;	id_cliente_fornecedor;	obs IA olhar em runtime e salvar;	Identificador do cliente (para pedido de venda) ou fornecedor (para pedido de compra).;
+user_sheets\pedidos.xlsx;	nome_cliente_fornecedor;	obs IA olhar em runtime e salvar;	Nome completo do cliente ou razão social do fornecedor.;
+user_sheets\pedidos.xlsx;	status_pedido;	obs IA olhar em runtime e salvar;	Status atual do pedido (Aberto, Em Processamento, Atendido, Cancelado).;
+user_sheets\pedidos.xlsx;	data_entrega_prevista;	obs IA olhar em runtime e salvar;	Data de entrega prevista para o pedido.;
+user_sheets\pedidos.xlsx;	data_entrega_real;	obs IA olhar em runtime e salvar;	Data em que o pedido foi efetivamente entregue ou recebido.;
+user_sheets\pedidos.xlsx;	valor_total_pedido;	obs IA olhar em runtime e salvar;	Valor monetário total do pedido.;
+user_sheets\pedidos.xlsx;	condicao_pagamento;	obs IA olhar em runtime e salvar;	Condições de pagamento acordadas para o pedido.;
+user_sheets\pedidos.xlsx;	observacoes_pedido;	obs IA olhar em runtime e salvar;	Campo para observações adicionais sobre o pedido.;
+user_sheets\pedidos.xlsx;	id_item_pedido;	obs IA olhar em runtime e salvar;	Identificador do item específico dentro do pedido.;
+user_sheets\pedidos.xlsx;	quantidade_item_pedido;	obs IA olhar em runtime e salvar;	Quantidade do item solicitado no pedido.;
+user_sheets\pedidos.xlsx;	preco_unitario_item_pedido;	obs IA olhar em runtime e salvar;	Preço unitário do item no momento do pedido.;
+user_sheets\pedidos.xlsx;	subtotal_item_pedido;	obs IA olhar em runtime e salvar;	Subtotal do item dentro do pedido antes de impostos/descontos.;
+user_sheets\pedidos.xlsx;	impostos_item_pedido;	obs IA olhar em runtime e salvar;	Valor dos impostos incidentes sobre o item no pedido.;
+user_sheets\pedidos.xlsx;	descontos_item_pedido;	obs IA olhar em runtime e salvar;	Valor dos descontos aplicados ao item no pedido.;
+user_sheets\pedidos.xlsx;	data_ultima_atualizacao_pedido;	obs IA olhar em runtime e salvar;	Data da última vez que o pedido foi atualizado no sistema.;
+user_sheets\pedidos.xlsx;	usuario_ultima_atualizacao_pedido;	obs IA olhar em runtime e salvar;	Usuário que realizou a última atualização no pedido.;
+user_sheets\pedidos.xlsx;	rastreamento_envio;	obs IA olhar em runtime e salvar;	Código ou link de rastreamento para o envio do pedido.;
+user_sheets\programacao.xlsx;	id_programacao;	obs IA olhar em runtime e salvar;	Identificador único de cada item de programação da produção.;
+user_sheets\programacao.xlsx;	id_ordem_producao;	obs IA olhar em runtime e salvar;	Identificador da ordem de produção que está sendo programada.;
+user_sheets\programacao.xlsx;	data_inicio_programada;	obs IA olhar em runtime e salvar;	Data de início programada para a operação ou ordem de produção.;
+user_sheets\programacao.xlsx;	hora_inicio_programada;	obs IA olhar em runtime e salvar;	Hora de início programada para a operação ou ordem de produção.;
+user_sheets\programacao.xlsx;	data_fim_programada;	obs IA olhar em runtime e salvar;	Data de fim programada para a operação ou ordem de produção.;
+user_sheets\programacao.xlsx;	hora_fim_programada;	obs IA olhar em runtime e salvar;	Hora de fim programada para a operação ou ordem de produção.;
+user_sheets\programacao.xlsx;	recurso_alocado;	obs IA olhar em runtime e salvar;	Recurso (máquina, posto) que foi alocado para esta programação.;
+user_sheets\programacao.xlsx;	operacao_programada;	obs IA olhar em runtime e salvar;	Operação específica da rota de produção que está sendo programada.;
+user_sheets\programacao.xlsx;	sequencia_na_fila;	obs IA olhar em runtime e salvar;	Posição na fila de trabalho do recurso ou prioridade de execução.;
+user_sheets\programacao.xlsx;	status_programacao;	obs IA olhar em runtime e salvar;	Status da programação (Agendado, Em Andamento, Concluído, Atrasado).;
+user_sheets\programacao.xlsx;	tempo_restante_programado;	obs IA olhar em runtime e salvar;	Tempo restante estimado para a conclusão da operação/ordem programada.;
+user_sheets\programacao.xlsx;	desvio_tempo_real;	obs IA olhar em runtime e salvar;	Diferença entre o tempo programado e o tempo real de execução.;
+user_sheets\programacao.xlsx;	motivo_desvio;	obs IA olhar em runtime e salvar;	Causa específica para o desvio de tempo na programação.;
+user_sheets\programacao.xlsx;	prioridade_programacao;	obs IA olhar em runtime e salvar;	Nível de prioridade da programação (Alta, Média, Baixa).;
+user_sheets\programacao.xlsx;	dependencias_operacionais;	obs IA olhar em runtime e salvar;	Outras operações ou tarefas que precisam ser concluídas antes desta programação.;
+user_sheets\programacao.xlsx;	capacidade_utilizada_percentual;	obs IA olhar em runtime e salvar;	Percentual da capacidade do recurso que será utilizada por esta programação.;
+user_sheets\programacao.xlsx;	tempo_setup_alocado;	obs IA olhar em runtime e salvar;	Tempo de setup alocado para a operação nesta programação.;
+user_sheets\programacao.xlsx;	tempo_ciclo_alocado;	obs IA olhar em runtime e salvar;	Tempo de ciclo alocado para a operação nesta programação.;
+user_sheets\programacao.xlsx;	observacoes_programacao;	obs IA olhar em runtime e salvar;	Campo para observações adicionais sobre a programação da produção.;
+user_sheets\programacao.xlsx;	responsavel_programacao;	obs IA olhar em runtime e salvar;	Colaborador responsável pelo agendamento ou acompanhamento desta programação.;
+user_sheets\Dashboards e Relatórios Gerenciais;	producao_total_periodo;	obs IA olhar em runtime e salvar;	Total de unidades produzidas em um determinado período.;
+user_sheets\Dashboards e Relatórios Gerenciais;	custo_medio_producao_item;	obs IA olhar em runtime e salvar;	Custo médio para produzir uma unidade de um item.;
+user_sheets\Dashboards e Relatórios Gerenciais;	performance_fornecedor;	obs IA olhar em runtime e salvar;	Métrica que avalia o desempenho dos fornecedores (ex: pontualidade, qualidade).;
+user_sheets\Dashboards e Relatórios Gerenciais;	rotatividade_estoque;	obs IA olhar em runtime e salvar;	Taxa de renovação do estoque em um período (giro de estoque).;
+user_sheets\Dashboards e Relatórios Gerenciais;	nivel_servico_cliente;	obs IA olhar em runtime e salvar;	Percentual de pedidos de clientes atendidos no prazo e conforme o combinado.;
+user_sheets\Dashboards e Relatórios Gerenciais;	horas_ociosas_recurso;	obs IA olhar em runtime e salvar;	Total de horas em que um recurso (máquina, funcionário) ficou inativo.;
+user_sheets\Dashboards e Relatórios Gerenciais;	refugo_total_percentual;	obs IA olhar em runtime e salvar;	Percentual total de itens produzidos que foram refugados.;
+user_sheets\Dashboards e Relatórios Gerenciais;	lucratividade_por_produto;	obs IA olhar em runtime e salvar;	Margem de lucro gerada por cada produto vendido.;
+user_sheets\Dashboards e Relatórios Gerenciais;	custo_manutencao_total;	obs IA olhar em runtime e salvar;	Custo total acumulado com manutenção de ativos e equipamentos.;
+user_sheets\Dashboards e Relatórios Gerenciais;	utilizacao_capacidade_produtiva_percentual;	obs IA olhar em runtime e salvar;	Percentual da capacidade máxima de produção que está sendo utilizada.;
+user_sheets\Dashboards e Relatórios Gerenciais;	saldo_caixa_atual;	obs IA olhar em runtime e salvar;	Valor atual disponível nas contas de caixa da empresa.;
+user_sheets\Dashboards e Relatórios Gerenciais;	contas_a_receber_vencidas;	obs IA olhar em runtime e salvar;	Valor total das contas que a empresa tem a receber e que estão atrasadas.;
+user_sheets\Dashboards e Relatórios Gerenciais;	contas_a_pagar_vencidas;	obs IA olhar em runtime e salvar;	Valor total das contas que a empresa tem a pagar e que estão atrasadas.;
+user_sheets\Dashboards e Relatórios Gerenciais;	lead_time_medio_producao;	obs IA olhar em runtime e salvar;	Tempo médio desde o início até a finalização de uma ordem de produção.;
+user_sheets\Dashboards e Relatórios Gerenciais;	tempo_medio_setup;	obs IA olhar em runtime e salvar;	Tempo médio necessário para configurar uma máquina ou processo.;
+user_sheets\Dashboards e Relatórios Gerenciais;	indice_qualidade_producao;	obs IA olhar em runtime e salvar;	Métrica que avalia a qualidade da produção (ex: % de produtos aprovados).;
+user_sheets\Dashboards e Relatórios Gerenciais;	produtividade_mao_de_obra;	obs IA olhar em runtime e salvar;	Métrica que mede a eficiência da mão de obra (ex: unidades produzidas por hora/colaborador).;
+user_sheets\Dashboards e Relatórios Gerenciais;	custo_medio_frete;	obs IA olhar em runtime e salvar;	Custo médio para transporte/frete.;
+user_sheets\Dashboards e Relatórios Gerenciais;	demanda_prevista_vs_real;	obs IA olhar em runtime e salvar;	Comparativo entre a demanda de produtos que foi prevista e a demanda real.;
+user_sheets\Dashboards e Relatórios Gerenciais;	receita_por_cliente;	obs IA olhar em runtime e salvar;	Receita total gerada por cada cliente.;
+user_sheets\clientes.xlsx;	id_cliente;	obs IA olhar em runtime e salvar;	Identificador único para cada cliente.;
+user_sheets\clientes.xlsx;	nome_cliente_razao_social;	obs IA olhar em runtime e salvar;	Nome completo do cliente ou razão social da empresa cliente.;
+user_sheets\clientes.xlsx;	cnpj_cpf;	obs IA olhar em runtime e salvar;	Número do CNPJ (para pessoa jurídica) ou CPF (para pessoa física) do cliente.;
+user_sheets\clientes.xlsx;	endereco_cliente;	obs IA olhar em runtime e salvar;	Endereço completo do cliente.;
+user_sheets\clientes.xlsx;	cidade_cliente;	obs IA olhar em runtime e salvar;	Cidade de residência ou sede do cliente.;
+user_sheets\clientes.xlsx;	estado_cliente;	obs IA olhar em runtime e salvar;	Estado de residência ou sede do cliente.;
+user_sheets\clientes.xlsx;	cep_cliente;	obs IA olhar em runtime e salvar;	Código de Endereçamento Postal (CEP) do cliente.;
+user_sheets\clientes.xlsx;	telefone_principal_cliente;	obs IA olhar em runtime e salvar;	Número de telefone principal para contato com o cliente.;
+user_sheets\clientes.xlsx;	email_principal_cliente;	obs IA olhar em runtime e salvar;	Endereço de e-mail principal para contato com o cliente.;
+user_sheets\clientes.xlsx;	contato_responsavel;	obs IA olhar em runtime e salvar;	Nome da pessoa de contato principal ou responsável pelo cliente.;
+user_sheets\clientes.xlsx;	historico_compras_total;	obs IA olhar em runtime e salvar;	Valor monetário total de todas as compras já realizadas pelo cliente.;
+user_sheets\clientes.xlsx;	data_primeira_compra;	obs IA olhar em runtime e salvar;	Data da primeira compra registrada pelo cliente.;
+user_sheets\clientes.xlsx;	data_ultima_compra;	obs IA olhar em runtime e salvar;	Data da última compra registrada pelo cliente.;
+user_sheets\clientes.xlsx;	condicoes_comerciais_especificas;	obs IA olhar em runtime e salvar;	Condições comerciais ou de pagamento específicas acordadas com o cliente.;
+user_sheets\clientes.xlsx;	limite_credito;	obs IA olhar em runtime e salvar;	Limite de crédito concedido ao cliente para compras a prazo.;
+user_sheets\clientes.xlsx;	observacoes_cliente;	obs IA olhar em runtime e salvar;	Campo para observações adicionais sobre o cliente.;
+user_sheets\clientes.xlsx;	status_cliente;	obs IA olhar em runtime e salvar;	Status atual do cliente (Ativo, Inativo, Potencial).;
+user_sheets\clientes.xlsx;	segmento_mercado_cliente;	obs IA olhar em runtime e salvar;	Segmento de mercado ao qual o cliente pertence (ex: varejo, indústria).;
+user_sheets\clientes.xlsx;	canal_venda_origem;	obs IA olhar em runtime e salvar;	Canal pelo qual o cliente foi adquirido (ex: Indicação, Marketing, Prospecção).;
+user_sheets\clientes.xlsx;	vendedor_responsavel;	obs IA olhar em runtime e salvar;	Colaborador responsável pelo relacionamento e vendas para este cliente.;
+user_sheets\fornecedores.xlsx;	id_fornecedor;	obs IA olhar em runtime e salvar;	Identificador único para cada fornecedor.;
+user_sheets\fornecedores.xlsx;	razao_social_fornecedor;	obs IA olhar em runtime e salvar;	Razão social da empresa fornecedora.;
+user_sheets\fornecedores.xlsx;	cnpj_fornecedor;	obs IA olhar em runtime e salvar;	Número do Cadastro Nacional de Pessoa Jurídica (CNPJ) do fornecedor.;
+user_sheets\fornecedores.xlsx;	endereco_fornecedor;	obs IA olhar em runtime e salvar;	Endereço completo do fornecedor.;
+user_sheets\fornecedores.xlsx;	cidade_fornecedor;	obs IA olhar em runtime e salvar;	Cidade da sede ou filial do fornecedor.;
+user_sheets\fornecedores.xlsx;	estado_fornecedor;	obs IA olhar em runtime e salvar;	Estado da sede ou filial do fornecedor.;
+user_sheets\fornecedores.xlsx;	cep_fornecedor;	obs IA olhar em runtime e salvar;	Código de Endereçamento Postal (CEP) do fornecedor.;
+user_sheets\fornecedores.xlsx;	telefone_principal_fornecedor;	obs IA olhar em runtime e salvar;	Número de telefone principal para contato com o fornecedor.;
+user_sheets\fornecedores.xlsx;	email_principal_fornecedor;	obs IA olhar em runtime e salvar;	Endereço de e-mail principal para contato com o fornecedor.;
+user_sheets\fornecedores.xlsx;	contato_vendas_fornecedor;	obs IA olhar em runtime e salvar;	Nome da pessoa de contato na área de vendas do fornecedor.;
+user_sheets\fornecedores.xlsx;	prazo_medio_entrega;	obs IA olhar em runtime e salvar;	Tempo médio em dias para o fornecedor entregar um pedido.;
+user_sheets\fornecedores.xlsx;	condicoes_pagamento_padrao;	obs IA olhar em runtime e salvar;	Condições de pagamento padrão negociadas com o fornecedor.;
+user_sheets\fornecedores.xlsx;	certificacoes_fornecedor;	obs IA olhar em runtime e salvar;	Lista de certificações que o fornecedor possui (ex: ISO 9001).;
+user_sheets\fornecedores.xlsx;	avaliacao_qualidade_fornecedor;	obs IA olhar em runtime e salvar;	Classificação ou score da qualidade dos produtos/serviços do fornecedor.;
+user_sheets\fornecedores.xlsx;	data_ultima_avaliacao_fornecedor;	obs IA olhar em runtime e salvar;	Data da última avaliação de desempenho ou qualidade do fornecedor.;
+user_sheets\fornecedores.xlsx;	historico_compras_valor_total;	obs IA olhar em runtime e salvar;	Valor monetário total de todas as compras já realizadas com o fornecedor.;
+user_sheets\fornecedores.xlsx;	status_fornecedor;	obs IA olhar em runtime e salvar;	Status atual do fornecedor (Ativo, Potencial, Bloqueado).;
+user_sheets\fornecedores.xlsx;	categoria_fornecimento_principal;	obs IA olhar em runtime e salvar;	Principal categoria de produtos ou serviços que o fornecedor oferece.;
+user_sheets\fornecedores.xlsx;	observacoes_fornecedor;	obs IA olhar em runtime e salvar;	Campo para observações adicionais sobre o fornecedor.;
+user_sheets\fornecedores.xlsx;	responsavel_compras_interno;	obs IA olhar em runtime e salvar;	Colaborador da sua empresa responsável pelo relacionamento com este fornecedor.;
+user_sheets\qualidade.xlsx;	id_inspecao;	obs IA olhar em runtime e salvar;	Identificador único de cada registro de inspeção de qualidade.;
+user_sheets\qualidade.xlsx;	tipo_inspecao;	obs IA olhar em runtime e salvar;	Classificação do tipo de inspeção (Recebimento, Em Processo, Final).;
+user_sheets\qualidade.xlsx;	id_item_inspecionado;	obs IA olhar em runtime e salvar;	Identificador do item que foi submetido à inspeção.;
+user_sheets\qualidade.xlsx;	lote_inspecionado;	obs IA olhar em runtime e salvar;	Número do lote do item que foi inspecionado.;
+user_sheets\qualidade.xlsx;	quantidade_inspecionada;	obs IA olhar em runtime e salvar;	Quantidade total de itens que foram inspecionados.;
+user_sheets\qualidade.xlsx;	quantidade_aprovada;	obs IA olhar em runtime e salvar;	Quantidade de itens que passaram na inspeção de qualidade.;
+user_sheets\qualidade.xlsx;	quantidade_reprovada;	obs IA olhar em runtime e salvar;	Quantidade de itens que falharam na inspeção de qualidade.;
+user_sheets\qualidade.xlsx;	data_inspecao;	obs IA olhar em runtime e salvar;	Data em que a inspeção foi realizada.;
+user_sheets\qualidade.xlsx;	inspetor;	obs IA olhar em runtime e salvar;	Colaborador responsável por realizar a inspeção.;
+user_sheets\qualidade.xlsx;	resultado_final_inspecao;	obs IA olhar em runtime e salvar;	Resultado geral da inspeção (Aprovado, Reprovado, Retrabalho).;
+user_sheets\qualidade.xlsx;	id_nao_conformidade;	obs IA olhar em runtime e salvar;	Identificador único de uma não conformidade (se detectada).;
+user_sheets\qualidade.xlsx;	descricao_nao_conformidade;	obs IA olhar em runtime e salvar;	Descrição detalhada do problema ou falha que constitui a não conformidade.;
+user_sheets\qualidade.xlsx;	causa_raiz_nao_conformidade;	obs IA olhar em runtime e salvar;	Causa fundamental que originou a não conformidade.;
+user_sheets\qualidade.xlsx;	acoes_corretivas_preventivas;	obs IA olhar em runtime e salvar;	Descrição das ações tomadas para corrigir e prevenir a não conformidade (CAPA).;
+user_sheets\qualidade.xlsx;	data_abertura_capa;	obs IA olhar em runtime e salvar;	Data de abertura do registro de Ação Corretiva/Preventiva.;
+user_sheets\qualidade.xlsx;	data_fechamento_capa;	obs IA olhar em runtime e salvar;	Data de fechamento da Ação Corretiva/Preventiva (quando concluída).;
+user_sheets\qualidade.xlsx;	responsavel_capa;	obs IA olhar em runtime e salvar;	Colaborador responsável pela execução da Ação Corretiva/Preventiva.;
+user_sheets\qualidade.xlsx;	status_capa;	obs IA olhar em runtime e salvar;	Status atual da Ação Corretiva/Preventiva (Aberta, Em Análise, Concluída).;
+user_sheets\qualidade.xlsx;	custo_estimado_nao_conformidade;	obs IA olhar em runtime e salvar;	Custo financeiro estimado associado à não conformidade.;
+user_sheets\qualidade.xlsx;	fotos_anexos_qualidade;	obs IA olhar em runtime e salvar;	Links ou referências para fotos, vídeos ou outros anexos relacionados à qualidade.;
+user_sheets\projetos.xlsx;	id_projeto;	obs IA olhar em runtime e salvar;	Identificador único para cada projeto.;
+user_sheets\projetos.xlsx;	nome_projeto;	obs IA olhar em runtime e salvar;	Nome do projeto.;
+user_sheets\projetos.xlsx;	descricao_projeto;	obs IA olhar em runtime e salvar;	Descrição detalhada dos objetivos e escopo do projeto.;
+user_sheets\projetos.xlsx;	gerente_projeto;	obs IA olhar em runtime e salvar;	Colaborador responsável pela gestão geral do projeto.;
+user_sheets\projetos.xlsx;	data_inicio_planejada_projeto;	obs IA olhar em runtime e salvar;	Data de início planejada para o projeto.;
+user_sheets\projetos.xlsx;	data_fim_planejada_projeto;	obs IA olhar em runtime e salvar;	Data de conclusão planejada para o projeto.;
+user_sheets\projetos.xlsx;	data_inicio_real_projeto;	obs IA olhar em runtime e salvar;	Data real em que o projeto foi iniciado.;
+user_sheets\projetos.xlsx;	data_fim_real_projeto;	obs IA olhar em runtime e salvar;	Data real em que o projeto foi concluído.;
+user_sheets\projetos.xlsx;	status_projeto;	obs IA olhar em runtime e salvar;	Status atual do projeto (Iniciado, Em Andamento, Atrasado, Concluído, Cancelado).;
+user_sheets\projetos.xlsx;	orcamento_planejado_projeto;	obs IA olhar em runtime e salvar;	Valor do orçamento previsto para o projeto.;
+user_sheets\projetos.xlsx;	orcamento_real_projeto;	obs IA olhar em runtime e salvar;	Valor do orçamento efetivamente gasto no projeto.;
+user_sheets\projetos.xlsx;	riscos_identificados;	obs IA olhar em runtime e salvar;	Lista ou descrição dos riscos potenciais identificados para o projeto.;
+user_sheets\projetos.xlsx;	equipe_do_projeto;	obs IA olhar em runtime e salvar;	Lista dos colaboradores que fazem parte da equipe do projeto.;
+user_sheets\projetos.xlsx;	marcos_do_projeto;	obs IA olhar em runtime e salvar;	Datas ou eventos importantes que marcam o progresso do projeto.;
+user_sheets\projetos.xlsx;	entregaveis_do_projeto;	obs IA olhar em runtime e salvar;	Resultados ou produtos específicos que o projeto deve entregar.;
+user_sheets\projetos.xlsx;	horas_trabalhadas_total_projeto;	obs IA olhar em runtime e salvar;	Total de horas de trabalho registradas no projeto.;
+user_sheets\projetos.xlsx;	observacoes_projeto;	obs IA olhar em runtime e salvar;	Campo para observações adicionais sobre o projeto.;
+user_sheets\projetos.xlsx;	porcentagem_conclusao_projeto;	obs IA olhar em runtime e salvar;	Percentual de conclusão atual do projeto.;
+user_sheets\projetos.xlsx;	data_ultima_atualizacao_projeto;	obs IA olhar em runtime e salvar;	Data da última vez que as informações do projeto foram atualizadas.;
 
+os arquivos da pasta app_sheets estão com erro ao tentar carregar.
+o script create_engenharia_xlsx.py falhou em criar a planilha corretamente na pasta user_sheets.
+  File "C:\Users\leona\OneDrive\Documentos\GitHub\5REV-SHEETS\client\gui.py", line 1319, in _run_create_engenharia_script
+    result = subprocess.run([sys.executable, script_path], capture_output=True, text=True, check=True)
+             ^^^^^^^^^^
+NameError: name 'subprocess' is not defined. Did you forget to import 'subprocess'?
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\leona\OneDrive\Documentos\GitHub\5REV-SHEETS\client\gui.py", line 1325, in _run_create_engenharia_script
+    except subprocess.CalledProcessError as e:
+           ^^^^^^^^^^
+NameError: name 'subprocess' is not defined. Did you forget to import 'subprocess'?
+
+engenharia workflow bugou, com o erro:  File "C:\Users\leona\OneDrive\Documentos\GitHub\5REV-SHEETS\client\gui.py", line 507, in <lambda>
+    action.triggered.connect(lambda chk=False, title=tool["name"]: self._open_tab(title, EngenhariaWorkflowTool()))
+                                                                                         ~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\leona\OneDrive\Documentos\GitHub\5REV-SHEETS\client\gui.py", line 315, in __init__
+    self._add_sample_diagram_elements()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\leona\OneDrive\Documentos\GitHub\5REV-SHEETS\client\gui.py", line 339, in _add_sample_diagram_elements
+    self.scene.addText("Fase de Design", QPointF(55, 65))
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: addText(self, text: Optional[str], font: QFont = QFont()): argument 2 has unexpected type 'QPointF';
+vamos aproveitar que já temos que alterar mesmo para deixar essa tool integrada com nossas planilhas existente e com a capacidade de fazer diagramas similar a do sofware "Dia" de diagrams.
+ele precisa salvar os workflows em alguma planilha existente na user_sheets e app_sheets; antes de desenvolver vou te mostrar mais dados inclusos no app, ok?
+
+você esqueceu de colocar nas últimas mensagens a parte da janela de configurações do perfil logado, que tinha uma tela feita anteriormente para mostrar os campos do perfil.
 
 criar tabela engenharia.xlsx com part_number parent_part_number que seria correspondente de cada part_number a uma estrutura de dados que contém a árvore de componentes(part_number, acompanha mais uma coluna contendo sua quantidade no item pai) e a matéria prima(são part_number também)
 e utilizará a tool de visualisar estrutura(structure view tool) e gerenciador de bom e engenharia workflow tool e visto como somente leitura pelo items.py e pela rpi_tool;
 fazer items.py utilizar estoque.xlsx linhas 1 e 2:
 
+
+criar atalho no gui.py para executar a tool create_engenharia_xlsx.py (somente administrador, conforme no sistema já existente, se quiser posso compartilhar a estrutura do projeto)
 Ajustar para sempre abrir o app em tela cheia após login.
 Ajustar caminhos do arquivo e nomes do arqui tools para usarem dados atualizados do usuário na pasta user_sheets, por favor antes disso analisar minhas alteracoes na primeira linha e demais dados nas planilhas que vou enviar, são agora as mesmas contidas em user_sheets
 em cada tool que é capaz de editar as células das planilhas, precisamos garantir que o usuário não colocará inputs do formato incorreto, o correto deve ser o mesmo tipo que o input da célula, e ser formatado corretamente quando for alterado.
