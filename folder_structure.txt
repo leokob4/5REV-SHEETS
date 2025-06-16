@@ -1,47 +1,86 @@
-5REV-SHEETS/
-├── client/
-│   ├── gui.py
-│   ├── login.py
-│   ├── session.py
-│   ├── excel_load.py
-│   ├── icons/                      ← ícones SVG usados na interface
-│   │   ├── add_icon.svg
-│   │   ├── delete_icon.svg
-│   │   ├── edit_icon.svg
-│   │   └── save_icon.svg
-│   └── ui/
-│       └── tools/
-│           ├── bom_tool.py
-│           ├── colaborador_tool.py
-│           ├── configurador_tool.py
-│           ├── estoque_tool.py
-│           ├── financeiro_tool.py
-│           ├── manutencao_tool.py
-│           ├── pedido_tool.py
-│           ├── pcp_tool.py
-│           ├── processo_tool.py
-│           └── produto_tool.py
-│
-├── user_sheets/
-│   ├── colaboradores.xlsx
-│   ├── configurador.xlsx
-│   ├── financeiro.xlsx
-│   ├── manutencao.xlsx
-│   ├── output.xlsx
-│   ├── pedidos.xlsx
-│   ├── programacao.xlsx
-│   ├── RPI.xlsx
-│   └── estoque.xlsx
-│
-├── html/
-│   ├── dashboard.html
-│   └── index.html
-│
-├── js/
-│   ├── dashboard.js
-│   ├── login.js
-│   └── script.js
-│
-├── tools.xlsx
-├── README.md
-└── LICENSE
+/workspaces/5REV-SHEETS
+├── AI COMMUNICATION.txt
+├── __pycache__
+│   └── web_server.cpython-313.pyc
+├── app_sheets
+│   ├── Planilha sem título.gsheet
+│   ├── main.xlsx
+│   ├── modules.xlsx
+│   ├── permissions.xlsx
+│   ├── roles_tools.xlsx
+│   ├── tools.xlsx
+│   └── users.xlsx
+├── client
+│   ├── __pycache__
+│   │   └── main.cpython-313.pyc
+│   ├── build_db.py
+│   ├── gui.py
+│   └── main.py
+├── folder_structure.txt
+├── js
+│   ├── dashboard.html
+│   └── login.html
+├── launch_gui.bat
+├── launch_server.bat
+├── requirements.txt
+├── resources
+│   └── w3.css
+├── run_py_server.bat
+├── sheet validator
+│   └── sheet_validator.py
+├── sprites
+│   └── 5rev-icon.bmp
+├── ui
+│   └── tools
+│       ├── __pycache__
+│       │   ├── bom_manager.cpython-313.pyc
+│       │   ├── colaboradores.cpython-313.pyc
+│       │   ├── configurador.cpython-313.pyc
+│       │   ├── estoque.cpython-313.pyc
+│       │   ├── financeiro.cpython-313.pyc
+│       │   ├── items.cpython-313.pyc
+│       │   ├── manufacturing.cpython-313.pyc
+│       │   ├── manutencao.cpython-313.pyc
+│       │   ├── pcp.cpython-313.pyc
+│       │   ├── pedidos.cpython-313.pyc
+│       │   └── product_data.cpython-313.pyc
+│       ├── bom_manager.py
+│       ├── colaboradores.py
+│       ├── configurador.py
+│       ├── estoque.py
+│       ├── financeiro.py
+│       ├── items.py
+│       ├── manufacturing.py
+│       ├── manutencao.py
+│       ├── pcp.py
+│       ├── pedidos.py
+│       ├── product_data.py
+│       └── sheet_editor.py
+├── user_sheets
+│   ├── RPI(1).xlsx
+│   ├── RPI.xlsx
+│   ├── colaboradores(1).xlsx
+│   ├── colaboradores.xlsx
+│   ├── configurador.xlsx
+│   ├── db.xlsx
+│   ├── manutencao.xlsx
+│   ├── old
+│   │   ├── RPI.gsheet
+│   │   ├── RPI.xlsx
+│   │   ├── colaboradores.gsheet
+│   │   ├── colaboradores.xlsx
+│   │   ├── configurador.gsheet
+│   │   ├── configurador.xlsx
+│   │   ├── db.xlsx
+│   │   ├── manutencao.xlsx
+│   │   ├── output.xlsx
+│   │   ├── output.xlsx.gsheet
+│   │   ├── programacao.gsheet
+│   │   └── programacao.xlsx
+│   ├── output(1).xlsx
+│   ├── output.xlsx
+│   ├── programacao(1).xlsx
+│   └── programacao.xlsx
+└── web_server.py
+
+13 directories, 70 files
