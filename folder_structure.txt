@@ -1,43 +1,47 @@
 5REV-SHEETS/
-├── client/                                     <- Pasta principal da interface PyQt5
-│   ├── excel_load.py                           <- Arquivo utilitário para ler arquivos Excel
-│   ├── gui.py                                  <- Arquivo principal da interface gráfica (PyQt5)
-│   ├── login.py                                <- Tela e lógica de login via GUI
-│   ├── session.py                              <- Gerenciador de sessão de usuário
+├── client/
+│   ├── gui.py
+│   ├── login.py
+│   ├── session.py
+│   ├── excel_load.py
+│   ├── icons/                      ← ícones SVG usados na interface
+│   │   ├── add_icon.svg
+│   │   ├── delete_icon.svg
+│   │   ├── edit_icon.svg
+│   │   └── save_icon.svg
 │   └── ui/
-│       └── tools/                              <- Pasta onde ficam todos os módulos (mod1 a mod10)
-│           ├── __init__.py                     <- (PRECISA estar presente - crie se não estiver)
-│           ├── product_data.py                 <- (mod1) Tela de cadastro de produtos
-│           ├── bom_manager.py                  <- (mod2a) Gerenciador de estrutura de produto
-│           ├── configurador.py                 <- (mod2b) Criador de tela de configuração comercial
-│           ├── colaboradores.py                <- (mod3) Tela de RH
-│           ├── items.py                        <- (mod4) Estrutura de engenharia
-│           ├── manufacturing.py                <- (mod5) Processo de manufatura
-│           ├── pcp.py                          <- (mod6) Planejamento de produção
-│           ├── estoque.py                      <- (mod7) Controle de estoque
-│           ├── financeiro.py                   <- (mod8) Tela financeira
-│           ├── pedidos.py                      <- (mod9) Tela de pedidos comerciais
-│           └── manutencao.py                   <- (mod10) Tela de manutenção de chamados
+│       └── tools/
+│           ├── bom_tool.py
+│           ├── colaborador_tool.py
+│           ├── configurador_tool.py
+│           ├── estoque_tool.py
+│           ├── financeiro_tool.py
+│           ├── manutencao_tool.py
+│           ├── pedido_tool.py
+│           ├── pcp_tool.py
+│           ├── processo_tool.py
+│           └── produto_tool.py
 │
-├── html/                                       <- Pasta com arquivos HTML da versão web
-│   ├── index.html                              <- Tela de login (web)
-│   └── dashboard.html                          <- Tela principal após login
-│
-├── js/                                         <- JavaScript para versão web
-│   ├── login.js                                <- Script de login
-│   └── dashboard.js                            <- Script para dashboard
-│
-├── user_sheets/                                <- Planilhas Excel com os dados reais do usuário
-│   ├── output.xlsx
-│   ├── RPI.xlsx
-│   ├── configurador.xlsx
+├── user_sheets/
 │   ├── colaboradores.xlsx
-│   ├── programacao.xlsx
-│   ├── estoque.xlsx
+│   ├── configurador.xlsx
 │   ├── financeiro.xlsx
+│   ├── manutencao.xlsx
+│   ├── output.xlsx
 │   ├── pedidos.xlsx
-│   └── manutencao.xlsx
+│   ├── programacao.xlsx
+│   ├── RPI.xlsx
+│   └── estoque.xlsx
 │
-├── tools.xlsx                                  <- Planilha mestre que define os módulos ativos
-├── README.md                                   <- Descrição do projeto
-└── requirements.txt                            
+├── html/
+│   ├── dashboard.html
+│   └── index.html
+│
+├── js/
+│   ├── dashboard.js
+│   ├── login.js
+│   └── script.js
+│
+├── tools.xlsx
+├── README.md
+└── LICENSE

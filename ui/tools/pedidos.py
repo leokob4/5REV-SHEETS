@@ -7,11 +7,13 @@ from PyQt5.QtCore import Qt
 DEFAULT_DATA_EXCEL_FILENAME = "pedidos_data.xlsx"
 DEFAULT_SHEET_NAME = "Pedidos"
 
+PEDIDOS_HEADERS = ["ID do Pedido", "Cliente", "Produto", "Quantidade", "Status do Pedido", "Data do Pedido"]
+
 class PedidosTool(QWidget):
     """
     GUI para gerenciar dados de Pedidos.
     Permite visualizar, adicionar e salvar informações de pedidos.
-    Permite redimensionamento interativo de colunas e linhas.
+    Os cabeçalhos da tabela são dinamicamente carregados do arquivo Excel.
     """
     def __init__(self, file_path=None):
         super().__init__()
@@ -43,7 +45,6 @@ class PedidosTool(QWidget):
         self.table = QTableWidget()
         self.table.setEditTriggers(QTableWidget.DoubleClicked | QTableWidget.AnyKeyPressed)
         self.table.setAlternatingRowColors(True)
-        # Habilitar redimensionamento interativo de colunas e linhas
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
         self.table.verticalHeader().setSectionResizeMode(QHeaderView.Interactive)
         self.layout.addWidget(self.table)
@@ -73,8 +74,8 @@ class PedidosTool(QWidget):
             QMessageBox.warning(self, "Arquivo Não Encontrado", f"O arquivo de dados não foi encontrado: {os.path.basename(self.file_path)}. Ele será criado com a aba padrão '{DEFAULT_SHEET_NAME}' ao salvar.")
             self.sheet_selector.addItem(DEFAULT_SHEET_NAME)
             self.table.setRowCount(0)
-            self.table.setColumnCount(0)
-            self.table.setHorizontalHeaderLabels(["ID do Pedido", "Cliente", "Produto", "Quantidade", "Status do Pedido", "Data do Pedido"])
+            self.table.setColumnCount(len(PEDIDOS_HEADERS))
+            self.table.setHorizontalHeaderLabels(PEDIDOS_HEADERS)
             return
 
         try:
@@ -105,7 +106,7 @@ class PedidosTool(QWidget):
             self.table.setColumnCount(0)
 
     def _load_data_from_selected_sheet(self):
-        """Carrega dados da planilha Excel atualmente selecionada para o QTableWidget."""
+        """Carrega dados da planilha Excel atualmente selecionada para o QTableWidget, usando cabeçalhos reais."""
         current_sheet_name = self.sheet_selector.currentText()
         if not current_sheet_name or not self.file_path:
             self.table.setRowCount(0)
@@ -116,29 +117,34 @@ class PedidosTool(QWidget):
             wb = None
             if not os.path.exists(self.file_path):
                 self.table.setRowCount(0)
-                self.table.setColumnCount(0)
-                self.table.setHorizontalHeaderLabels(["ID do Pedido", "Cliente", "Produto", "Quantidade", "Status do Pedido", "Data do Pedido"])
+                self.table.setColumnCount(len(PEDIDOS_HEADERS))
+                self.table.setHorizontalHeaderLabels(PEDIDOS_HEADERS)
                 return
 
             wb = openpyxl.load_workbook(self.file_path)
             if current_sheet_name not in wb.sheetnames:
-                QMessageBox.information(self, "Planilha Não Encontrada", f"A planilha '{current_sheet_name}' não foi encontrada em '{os.path.basename(self.file_path)}'. Criando uma nova.")
+                QMessageBox.information(self, "Planilha Não Encontrada", f"A planilha '{current_sheet_name}' não foi encontrada em '{os.path.basename(self.file_path)}'. Criando uma nova com cabeçalhos padrão.")
                 ws = wb.create_sheet(current_sheet_name)
-                default_headers = ["ID do Pedido", "Cliente", "Produto", "Quantidade", "Status do Pedido", "Data do Pedido"]
-                ws.append(default_headers)
+                ws.append(PEDIDOS_HEADERS)
                 wb.save(self.file_path)
-                self._populate_sheet_selector()
+                self._populate_sheet_selector() 
                 return
 
             sheet = wb[current_sheet_name]
 
             headers = [cell.value for cell in sheet[1]] if sheet.max_row > 0 else []
+            if not headers:
+                headers = PEDIDOS_HEADERS
+            
             self.table.setColumnCount(len(headers))
             self.table.setHorizontalHeaderLabels(headers)
 
             data = []
             for row in sheet.iter_rows(min_row=2):
-                data.append([cell.value for cell in row])
+                row_values = [cell.value for cell in row]
+                while len(row_values) < len(headers):
+                    row_values.append("")
+                data.append(row_values)
 
             self.table.setRowCount(len(data))
             for row_idx, row_data in enumerate(data):
@@ -153,11 +159,11 @@ class PedidosTool(QWidget):
         except Exception as e:
             QMessageBox.critical(self, "Erro de Carregamento", f"Erro ao carregar dados de pedidos da aba '{current_sheet_name}': {e}")
             self.table.setRowCount(0)
-            self.table.setColumnCount(0)
-            self.table.setHorizontalHeaderLabels(["Erro", "Erro", "Erro", "Erro", "Erro", "Erro"])
+            self.table.setColumnCount(len(PEDIDOS_HEADERS)) 
+            self.table.setHorizontalHeaderLabels(PEDIDOS_HEADERS)
 
     def _save_data(self):
-        """Salva dados do QTableWidget de volta para a planilha Excel."""
+        """Salva dados do QTableWidget de volta para a planilha Excel, mantendo cabeçalhos existentes ou usando padrão."""
         if not self.file_path:
             QMessageBox.critical(self, "Erro", "Nenhum arquivo especificado para salvar.")
             return
@@ -173,10 +179,12 @@ class PedidosTool(QWidget):
                 wb = openpyxl.Workbook()
                 ws = wb.active
                 ws.title = current_sheet_name
-                current_headers = [self.table.horizontalHeaderItem(col).text() for col in range(self.table.columnCount())]
-                if not current_headers:
-                    current_headers = ["ID do Pedido", "Cliente", "Produto", "Quantidade", "Status do Pedido", "Data do Pedido"]
-                ws.append(current_headers)
+                
+                headers_to_save = [self.table.horizontalHeaderItem(col).text() for col in range(self.table.columnCount())]
+                if not headers_to_save:
+                    headers_to_save = PEDIDOS_HEADERS
+                ws.append(headers_to_save)
+                
                 wb.save(self.file_path)
                 QMessageBox.information(self, "Arquivo e Planilha Criados", f"Novo arquivo '{os.path.basename(self.file_path)}' com planilha '{current_sheet_name}' criado.")
                 self._populate_sheet_selector() 
@@ -184,10 +192,10 @@ class PedidosTool(QWidget):
                 wb = openpyxl.load_workbook(self.file_path)
                 if current_sheet_name not in wb.sheetnames:
                     ws = wb.create_sheet(current_sheet_name)
-                    current_headers = [self.table.horizontalHeaderItem(col).text() for col in range(self.table.columnCount())]
-                    if not current_headers:
-                        current_headers = ["ID do Pedido", "Cliente", "Produto", "Quantidade", "Status do Pedido", "Data do Pedido"]
-                    ws.append(current_headers)
+                    headers_to_save = [self.table.horizontalHeaderItem(col).text() for col in range(self.table.columnCount())]
+                    if not headers_to_save:
+                        headers_to_save = PEDIDOS_HEADERS
+                    ws.append(headers_to_save)
                     wb.save(self.file_path)
                     QMessageBox.information(self, "Planilha Criada", f"Nova planilha '{current_sheet_name}' criada em '{os.path.basename(self.file_path)}'.")
                     self._populate_sheet_selector()
@@ -199,14 +207,15 @@ class PedidosTool(QWidget):
 
             current_headers = [self.table.horizontalHeaderItem(col).text() for col in range(self.table.columnCount())]
             if not current_headers:
-                current_headers = ["ID do Pedido", "Cliente", "Produto", "Quantidade", "Status do Pedido", "Data do Pedido"]
-                self.table.setColumnCount(len(current_headers))
-                self.table.setHorizontalHeaderLabels(current_headers)
+                current_headers = PEDIDOS_HEADERS
             
             existing_sheet_headers = [cell.value for cell in sheet[1]]
             if existing_sheet_headers != current_headers:
-                for col_idx, header_value in enumerate(current_headers):
-                    sheet.cell(row=1, column=col_idx + 1, value=header_value)
+                sheet.delete_rows(1)
+                sheet.insert_rows(1)
+                sheet.append(current_headers)
+            elif not existing_sheet_headers and current_headers:
+                sheet.append(current_headers)
             
             for row_idx in range(self.table.rowCount()):
                 row_data = []

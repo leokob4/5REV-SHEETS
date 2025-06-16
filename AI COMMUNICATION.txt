@@ -1,2 +1,32 @@
-implementar controle de seta do mouse para ajustar a largura e altura das colunas
+criar tabela engenharia.xlsx com part_number parent_part_number que seria correspondente de cada part_number a uma estrutura de dados que contém a árvore de componentes(part_number, acompanha mais uma coluna contendo sua quantidade no item pai) e a matéria prima(são part_number também)
+e utilizará a tool de visualisar estrutura(structure view tool) e gerenciador de bom e engenharia workflow tool e visto como somente leitura pelo items.py e pela rpi_tool;
+
+fazer items.py utilizar estoque.xlsx linhas 1 e 2:
+
 ajustar caminhos do arquivo e nomes do arqui tools para usarem dados atualizados do usuário na pasta user_sheets, por favor antes disso analisar minhas alteracoes na primeira linha e demais dados nas planilhas que vou enviar, são agora as mesmas contidas em user_sheets
+
+ajustar para sempre abrir o app em tela cheia após login.
+
+fazer tool para atualizar db.xlsx contentdo dados das planilhas do user_sheets, ------<>movido para engenharia.xlsx falta proteger para usuarios de roles diferentes
+tornar ação simulada de deletar arquivo real, dando proteção contra remocao para as planilhas 
+user_sheets/
+colaboradores.xlsx
+configurador.xlsx
+financeiro.xlsx
+manutencao.xlsx
+output.xlsx
+pedidos.xlsx
+programacao.xlsx
+RPI.xlsx
+estoque.xlsx
+db.xlsx
+app_sheets/
+tools.xlsx
+modules.xlsx
+permissions.xlsx
+roles_tools.xlsx
+users.xlsx
+main.xlsx
+a página db_db, do arquivo db.xlsx deve ficar com a primeira linha com os campos arquivo(correspondendo ao caminho do *xlsx) e nome_coluna(correspondendo a cada primeira linha de cada página de cada outra planilha mencionada)
+
+
