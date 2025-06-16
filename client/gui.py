@@ -26,16 +26,17 @@ from ui.tools.product_data import ProductDataTool
 from ui.tools.bom_manager import BomManagerTool
 from ui.tools.configurador import ConfiguradorTool
 from ui.tools.colaboradores import ColaboradoresTool
-from ui.tools.items import ItemsTool
+from ui.tools.items import ItemsTool # This is the tool we are updating
 from ui.tools.manufacturing import ManufacturingTool
 from ui.tools.pcp import PcpTool
-from ui.tools.estoque import EstoqueTool
+from ui.tools.estoque import EstoqueTool # Still for its own excel, not to be confused with items.py using estoque.xlsx
 from ui.tools.financeiro import FinanceiroTool
 from ui.tools.pedidos import PedidosTool
 from ui.tools.manutencao import ManutencaoTool
-from ui.tools.engenharia_data import EngenhariaDataTool # NEW IMPORT
-from ui.tools.excel_viewer_tool import ExcelViewerTool # Import the generic Excel Viewer Tool
-from ui.tools.structure_view_tool import StructureViewTool # Import StructureViewTool
+from ui.tools.engenharia_data import EngenhariaDataTool 
+from ui.tools.excel_viewer_tool import ExcelViewerTool 
+from ui.tools.structure_view_tool import StructureViewTool
+from ui.tools.rpi_tool import RpiTool # This is the tool we need to make read-only for engenharia.xlsx
 
 # --- File Paths Configuration ---
 # Define standard paths for consistency.
@@ -43,8 +44,9 @@ from ui.tools.structure_view_tool import StructureViewTool # Import StructureVie
 USER_SHEETS_DIR = os.path.join(project_root, "user_sheets")
 APP_SHEETS_DIR = os.path.join(project_root, "app_sheets")
 DB_EXCEL_PATH = os.path.join(USER_SHEETS_DIR, "db.xlsx")
-TOOLS_EXCEL_PATH = os.path.join(APP_SHEETS_DIR, "tools.xlsx") # New path for tools.xlsx
-ENGENHARIA_EXCEL_PATH = os.path.join(USER_SHEETS_DIR, "engenharia.xlsx") # Path for engenharia.xlsx
+TOOLS_EXCEL_PATH = os.path.join(APP_SHEETS_DIR, "tools.xlsx") 
+ENGENHARIA_EXCEL_PATH = os.path.join(USER_SHEETS_DIR, "engenharia.xlsx") 
+ESTOQUE_EXCEL_PATH = os.path.join(USER_SHEETS_DIR, "estoque.xlsx") # NEW: Path for estoque.xlsx
 
 # Ensure directories exist
 os.makedirs(USER_SHEETS_DIR, exist_ok=True)
@@ -59,9 +61,10 @@ WORKSPACE_ITEMS = [
     "Component-XYZ",
     "Specification-005",
     "Drawing-CAD-001",
-    "PROD-001", # Added for engenharia.xlsx demo
-    "ASSY-A", # Added for engenharia.xlsx demo
-    "RAW-MAT-001", # Added for engenharia.xlsx demo
+    "PROD-001", 
+    "ASSY-A", 
+    "RAW-MAT-001", 
+    "100001" # Added for estoque.xlsx demo
 ]
 
 # === SHEET HELPERS ===
@@ -377,7 +380,6 @@ class TeamcenterStyleGUI(QMainWindow):
                 if tool["id"] == "mod4": # Engenharia (Workflow)
                     action.triggered.connect(lambda chk=False, title=tool["name"]: self._open_tab(title, EngenhariaWorkflowTool()))
                 elif tool["id"] == "mes_pcp": # MES (Apontamento Fábrica)
-                    # For MES, we will create a dedicated widget, perhaps using a placeholder class for now
                     action.triggered.connect(lambda chk=False, title=tool["name"]: self._open_tab(title, self._create_mes_pcp_tool_widget()))
                 elif tool["id"] == "prod_data":
                     action.triggered.connect(lambda chk=False, title=tool["name"]: self._open_tab(title, ProductDataTool()))
@@ -389,8 +391,8 @@ class TeamcenterStyleGUI(QMainWindow):
                 elif tool["id"] == "colab":
                     action.triggered.connect(lambda chk=False, title=tool["name"]: self._open_tab(title, ColaboradoresTool()))
                 elif tool["id"] == "items_tool":
-                    # items.py needs to open engenharia.xlsx as read-only
-                    action.triggered.connect(lambda chk=False, title=tool["name"]: self._open_tab(title, ItemsTool(file_path=ENGENHARIA_EXCEL_PATH, read_only=True)))
+                    # items.py now uses estoque.xlsx by default and is editable for it
+                    action.triggered.connect(lambda chk=False, title=tool["name"]: self._open_tab(title, ItemsTool(file_path=ESTOQUE_EXCEL_PATH))) 
                 elif tool["id"] == "manuf":
                     action.triggered.connect(lambda chk=False, title=tool["name"]: self._open_tab(title, ManufacturingTool()))
                 elif tool["id"] == "pcp_tool":
@@ -503,7 +505,7 @@ class TeamcenterStyleGUI(QMainWindow):
                     file_item.setData(0, Qt.UserRole, file_path) # Store full path in UserRole
                     files_root.addChild(file_item)
         
-        # Add a section for Projects/Workspace Items
+        # Add a section for Projects/Espaço de Trabalho
         projects_root = QTreeWidgetItem(["Projetos/Espaço de Trabalho"])
         self.tree.addTopLevelItem(projects_root)
 
@@ -519,7 +521,7 @@ class TeamcenterStyleGUI(QMainWindow):
         self.tree.expandAll() # Expand all tree items by default
 
     def _open_file_from_tree(self, item, column):
-        """Opens an Excel file from the tree view in a generic ExcelViewerTool."""
+        """Opens an Excel file from the tree view in a generic ExcelViewerTool or specific tool."""
         file_path = item.data(0, Qt.UserRole)
         if file_path and os.path.exists(file_path):
             file_name = os.path.basename(file_path)
@@ -536,13 +538,15 @@ class TeamcenterStyleGUI(QMainWindow):
                  self._open_tab(tab_title, BomManagerTool(file_path=file_path))
             elif file_name == "configurador.xlsx":
                  self._open_tab(tab_title, ConfiguradorTool(file_path=file_path))
-            elif file_name == "items_data.xlsx":
+            elif file_name == "estoque.xlsx": # NEW: Explicitly open estoque.xlsx with ItemsTool
+                 self._open_tab(tab_title, ItemsTool(file_path=file_path))
+            elif file_name == "items_data.xlsx": # For the original items_data.xlsx
                  self._open_tab(tab_title, ItemsTool(file_path=file_path))
             elif file_name == "manufacturing_data.xlsx":
                  self._open_tab(tab_title, ManufacturingTool(file_path=file_path))
             elif file_name == "programacao.xlsx": # Assuming programacao.xlsx is for PcpTool
                  self._open_tab(tab_title, PcpTool(file_path=file_path))
-            elif file_name == "estoque_data.xlsx":
+            elif file_name == "estoque_data.xlsx": # This is the original estoque tool, keep it separate
                  self._open_tab(tab_title, EstoqueTool(file_path=file_path))
             elif file_name == "financeiro.xlsx":
                  self._open_tab(tab_title, FinanceiroTool(file_path=file_path))

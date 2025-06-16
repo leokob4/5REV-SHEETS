@@ -1,16 +1,14 @@
-
-ajustar para sempre abrir o app em tela cheia após login.
-
-ajustar caminhos do arquivo e nomes do arqui tools para usarem dados atualizados do usuário na pasta user_sheets, por favor antes disso analisar minhas alteracoes na primeira linha e demais dados nas planilhas que vou enviar, são agora as mesmas contidas em user_sheets
-em cada tool que é capaz de editar as células das planilhas, precisamos garantir que o usuário não colocará inputs do formato incorreto, o correto deve ser o mesmo tipo que o input da célula, e ser formatado corretamente quando for alterado.
+criar atalho no gui.py para executar a tool create_engenharia_xlsx.py (somente administrador, conforme no sistema já existente, se quiser posso compartilhar a estrutura do projeto)
 
 
 criar tabela engenharia.xlsx com part_number parent_part_number que seria correspondente de cada part_number a uma estrutura de dados que contém a árvore de componentes(part_number, acompanha mais uma coluna contendo sua quantidade no item pai) e a matéria prima(são part_number também)
 e utilizará a tool de visualisar estrutura(structure view tool) e gerenciador de bom e engenharia workflow tool e visto como somente leitura pelo items.py e pela rpi_tool;
-
 fazer items.py utilizar estoque.xlsx linhas 1 e 2:
 
-fazer tool para atualizar página db_db db.xlsx contentdo dados dos headers das planilhas do user_sheets e app_sheets;
+Ajustar para sempre abrir o app em tela cheia após login.
+Ajustar caminhos do arquivo e nomes do arqui tools para usarem dados atualizados do usuário na pasta user_sheets, por favor antes disso analisar minhas alteracoes na primeira linha e demais dados nas planilhas que vou enviar, são agora as mesmas contidas em user_sheets
+em cada tool que é capaz de editar as células das planilhas, precisamos garantir que o usuário não colocará inputs do formato incorreto, o correto deve ser o mesmo tipo que o input da célula, e ser formatado corretamente quando for alterado.
+Fazer tool para atualizar página db_db db.xlsx contentdo dados dos headers das planilhas do user_sheets e app_sheets;
 tornar ação simulada de deletar arquivo real, dando proteção contra remocao e alteracao de nome para as planilhas:
 user_sheets/
 colaboradores.xlsx
@@ -23,6 +21,7 @@ programacao.xlsx
 RPI.xlsx
 estoque.xlsx
 db.xlsx
+engenharia.xlsx
 app_sheets/
 tools.xlsx
 modules.xlsx
@@ -32,6 +31,19 @@ users.xlsx
 main.xlsx
 a página db_db, do arquivo db.xlsx deve ficar com a primeira coluna com os campos arquivo(correspondendo ao caminho do *xlsx) e nome_coluna(correspondendo a cada primeira linha de cada página de cada outra planilha mencionada) ,segunda coluna igual ao nome esrito na célula(por exempo o part_number)
 
-
+erros a corrigir:
+nessa última versão enviada por você não está fazendo login com a tecla enter.
+o app também está mostrando duplicatas das user sheets que realmente não estão nas planilhas.
+ao abrir as tools que mexem com as planilhas, também deveria ser por padrão a primeira página da planilha, mas atualmente está definindo uma página com nome fixo.
+  File "C:\Users\leona\OneDrive\Documentos\GitHub\5REV-SHEETS\client\gui.py", line 381, in <lambda>
+    action.triggered.connect(lambda chk=False, title=tool["name"]: self._open_tab(title, EngenhariaWorkflowTool()))
+                                                                                         ~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\leona\OneDrive\Documentos\GitHub\5REV-SHEETS\client\gui.py", line 280, in __init__
+    self._add_sample_diagram_elements()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\leona\OneDrive\Documentos\GitHub\5REV-SHEETS\client\gui.py", line 301, in _add_sample_diagram_elements
+    node1 = self.scene.addRect(50, 50, 100, 50, QPen(Qt.black), QBrush(Qt.lightblue))
+                                                                       ^^^^^^^^^^^^
+AttributeError: type object 'Qt' has no attribute 'lightblue'
 
 

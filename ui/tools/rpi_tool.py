@@ -24,8 +24,9 @@ class RpiTool(QWidget):
     GUI para gerenciar Roteiros de Produção (RPI).
     Permite visualizar, adicionar e salvar informações de roteiro.
     Os cabeçalhos da tabela são dinamicamente carregados do arquivo Excel.
+    Pode operar em modo somente leitura.
     """
-    def __init__(self, file_path=None):
+    def __init__(self, file_path=None, read_only=False): # Added read_only parameter
         super().__init__()
         if file_path:
             self.file_path = file_path
@@ -33,11 +34,18 @@ class RpiTool(QWidget):
             project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
             self.file_path = os.path.join(project_root, 'user_sheets', DEFAULT_DATA_EXCEL_FILENAME)
 
+        self.is_read_only = read_only or (os.path.basename(self.file_path) == "engenharia.xlsx") # Force read-only for engenharia.xlsx
+
         self.setWindowTitle(f"Roteiros de Produção (RPI): {os.path.basename(self.file_path)}")
+        if self.is_read_only:
+            self.setWindowTitle(self.windowTitle() + " (Somente Leitura)")
+
         self.layout = QVBoxLayout(self)
 
         header_layout = QHBoxLayout()
         self.file_name_label = QLabel(f"<b>Arquivo:</b> {os.path.basename(self.file_path)}")
+        if self.is_read_only:
+            self.file_name_label.setText(self.file_name_label.text() + " (Somente Leitura)")
         header_layout.addWidget(self.file_name_label)
         header_layout.addStretch()
 
@@ -53,7 +61,12 @@ class RpiTool(QWidget):
         self.layout.addLayout(header_layout)
 
         self.table = QTableWidget()
-        self.table.setEditTriggers(QTableWidget.DoubleClicked | QTableWidget.AnyKeyPressed)
+        # Disable editing if in read-only mode
+        if self.is_read_only:
+            self.table.setEditTriggers(QTableWidget.NoEditTriggers)
+        else:
+            self.table.setEditTriggers(QTableWidget.DoubleClicked | QTableWidget.AnyKeyPressed)
+        
         self.table.setAlternatingRowColors(True)
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
         self.table.verticalHeader().setSectionResizeMode(QHeaderView.Interactive)
@@ -71,6 +84,12 @@ class RpiTool(QWidget):
         button_layout.addWidget(self.save_btn)
         button_layout.addWidget(self.refresh_btn)
         self.layout.addLayout(button_layout)
+
+        # Disable buttons if in read-only mode
+        if self.is_read_only:
+            self.add_row_btn.setEnabled(False)
+            self.save_btn.setEnabled(False)
+            QMessageBox.information(self, "Modo Somente Leitura", f"A ferramenta está operando em modo somente leitura para {os.path.basename(self.file_path)}. Edições não são permitidas.")
 
         self._populate_sheet_selector()
 
@@ -163,6 +182,12 @@ class RpiTool(QWidget):
                     item = QTableWidgetItem(str(cell_value) if cell_value is not None else "")
                     self.table.setItem(row_idx, col_idx, item)
 
+            # Re-apply read-only setting after loading data
+            if self.is_read_only:
+                self.table.setEditTriggers(QTableWidget.NoEditTriggers)
+            else:
+                self.table.setEditTriggers(QTableWidget.DoubleClicked | QTableWidget.AnyKeyPressed)
+
             self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
             self.table.verticalHeader().setSectionResizeMode(QHeaderView.Interactive)
             QMessageBox.information(self, "Dados Carregados", f"Dados de '{current_sheet_name}' carregados com sucesso.")
@@ -175,6 +200,10 @@ class RpiTool(QWidget):
 
     def _save_data(self):
         """Salva dados do QTableWidget de volta para a planilha Excel, mantendo cabeçalhos existentes ou usando padrão."""
+        if self.is_read_only: # Prevent saving in read-only mode
+            QMessageBox.warning(self, "Ação Não Permitida", "Esta ferramenta está em modo somente leitura. Não é possível salvar alterações.")
+            return
+
         if not self.file_path:
             QMessageBox.critical(self, "Erro", "Nenhum arquivo especificado para salvar.")
             return
@@ -242,6 +271,10 @@ class RpiTool(QWidget):
 
     def _add_empty_row(self):
         """Adiciona uma linha vazia ao QTableWidget para nova entrada de dados."""
+        if self.is_read_only: # Prevent adding rows in read-only mode
+            QMessageBox.warning(self, "Ação Não Permitida", "Esta ferramenta está em modo somente leitura. Não é possível adicionar linhas.")
+            return
+
         row_count = self.table.rowCount()
         self.table.insertRow(row_count)
         for col_idx in range(self.table.columnCount()):
