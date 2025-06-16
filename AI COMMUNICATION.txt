@@ -1,7 +1,20 @@
+Traceback (most recent call last):
+  File "C:\Users\leona\OneDrive\Documentos\GitHub\5REV-SHEETS\client\gui.py", line 43, in <module>
+    from ui.tools.engenharia_workflow_tool import EngenhariaWorkflowTool # IMPORTANTE: Importar a nova tool
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\leona\OneDrive\Documentos\GitHub\5REV-SHEETS\ui\tools\engenharia_workflow_tool.py", line 7, in <module>
+    from PyQt5.QtGui import QBrush, QPen, QColor, QFont, QGraphicsRectItem, QGraphicsLineItem, QGraphicsTextItem
+ImportError: cannot import name 'QGraphicsRectItem' from 'PyQt5.QtGui' (C:\Users\leona\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\PyQt5\QtGui.pyd)
+
+precisamos melhorar engenharia.xlsx que deve servir como base para criar estruturas de produto, como estruturas em árvore que o item pai (com part_number definida) contém itens filho com determinadas quantidades de determinada unidade de medida, isso seriam os componentes, e o mesmo deve valer para matérias primas, podendo assim um item pai conter vários part_number tanto como componente como como matéria prima, em unidade e quantidade distinta.
+tipo assim só que mais completo e bonito possível:
+Tabela de Estrutura de Produto (Exemplo Simples)
+part_number;	child_part_number;	parent_part_number;	quantidade_parent_part;	quantidade_child_part;	materia_prima_unidade;	materia_prima_quantidade;
+
 
 
 refazer e reconectar com gui.py todos os ui/tools *.py para não ligar para valores default, somente carregar as planilhas todas na ordem que estão.
-verificar se não é obsoleto termos em db.xlsx a planilha tool_schemas
+verificar se não é obsoleto termos em db.xlsx a planilha tool_schemas, por favor remover headers que não servirão para nada já que já são sempre a primeira linha das planilhas,.
 
 vamos garantir que não sobrou no nosso código py algum valor como:
 "obs IA olhar em runtime e salvar"
