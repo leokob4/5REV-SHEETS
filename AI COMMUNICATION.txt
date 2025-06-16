@@ -1,14 +1,17 @@
+
+ajustar para sempre abrir o app em tela cheia após login.
+
+ajustar caminhos do arquivo e nomes do arqui tools para usarem dados atualizados do usuário na pasta user_sheets, por favor antes disso analisar minhas alteracoes na primeira linha e demais dados nas planilhas que vou enviar, são agora as mesmas contidas em user_sheets
+em cada tool que é capaz de editar as células das planilhas, precisamos garantir que o usuário não colocará inputs do formato incorreto, o correto deve ser o mesmo tipo que o input da célula, e ser formatado corretamente quando for alterado.
+
+
 criar tabela engenharia.xlsx com part_number parent_part_number que seria correspondente de cada part_number a uma estrutura de dados que contém a árvore de componentes(part_number, acompanha mais uma coluna contendo sua quantidade no item pai) e a matéria prima(são part_number também)
 e utilizará a tool de visualisar estrutura(structure view tool) e gerenciador de bom e engenharia workflow tool e visto como somente leitura pelo items.py e pela rpi_tool;
 
 fazer items.py utilizar estoque.xlsx linhas 1 e 2:
 
-ajustar caminhos do arquivo e nomes do arqui tools para usarem dados atualizados do usuário na pasta user_sheets, por favor antes disso analisar minhas alteracoes na primeira linha e demais dados nas planilhas que vou enviar, são agora as mesmas contidas em user_sheets
-
-ajustar para sempre abrir o app em tela cheia após login.
-
-fazer tool para atualizar db.xlsx contentdo dados das planilhas do user_sheets, ------<>movido para engenharia.xlsx falta proteger para usuarios de roles diferentes
-tornar ação simulada de deletar arquivo real, dando proteção contra remocao para as planilhas 
+fazer tool para atualizar página db_db db.xlsx contentdo dados dos headers das planilhas do user_sheets e app_sheets;
+tornar ação simulada de deletar arquivo real, dando proteção contra remocao e alteracao de nome para as planilhas:
 user_sheets/
 colaboradores.xlsx
 configurador.xlsx
@@ -27,6 +30,8 @@ permissions.xlsx
 roles_tools.xlsx
 users.xlsx
 main.xlsx
-a página db_db, do arquivo db.xlsx deve ficar com a primeira linha com os campos arquivo(correspondendo ao caminho do *xlsx) e nome_coluna(correspondendo a cada primeira linha de cada página de cada outra planilha mencionada)
+a página db_db, do arquivo db.xlsx deve ficar com a primeira coluna com os campos arquivo(correspondendo ao caminho do *xlsx) e nome_coluna(correspondendo a cada primeira linha de cada página de cada outra planilha mencionada) ,segunda coluna igual ao nome esrito na célula(por exempo o part_number)
+
+
 
 
