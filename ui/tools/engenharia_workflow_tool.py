@@ -2,9 +2,13 @@ import sys
 import os
 import openpyxl
 import json # Para serializar/desserializar a lista de conexões
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QPushButton, QHBoxLayout, QMessageBox, QGraphicsView, QGraphicsScene, QComboBox, QLabel, QInputDialog
+from PyQt5.QtWidgets import (
+    QApplication, QWidget, QVBoxLayout, QPushButton, QHBoxLayout, 
+    QMessageBox, QGraphicsView, QGraphicsScene, QComboBox, QLabel, QInputDialog,
+    QGraphicsRectItem, QGraphicsLineItem, QGraphicsTextItem # Corrigido: Movidos de QtGui para QtWidgets
+)
 from PyQt5.QtCore import Qt, QPointF
-from PyQt5.QtGui import QBrush, QPen, QColor, QFont, QGraphicsRectItem, QGraphicsLineItem, QGraphicsTextItem
+from PyQt5.QtGui import QBrush, QPen, QColor, QFont # QBrush, QPen, QColor, QFont permanecem em QtGui
 
 # Definindo caminhos de forma dinâmica a partir da localização do script
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -19,7 +23,7 @@ class EngenhariaWorkflowTool(QWidget):
     GUI para criar, visualizar, salvar e carregar diagramas de fluxo de trabalho.
     Permite adicionar nós de tarefa e ligações de dependência.
     Os dados do diagrama (posições, textos, etc.) são salvos/carregados de engenharia.xlsx.
-    A estrutura da planilha é implícita pelos dados salvos.
+    A estrutura da planilha é implícita pelos dados salvos e é um "schema interno" da ferramenta.
     """
     def __init__(self, file_path=None, sheet_name=None):
         super().__init__()
@@ -80,8 +84,6 @@ class EngenhariaWorkflowTool(QWidget):
 
         # Popula o seletor de planilhas e carrega os dados iniciais
         self._populate_sheet_selector()
-
-    # Removido _get_workflow_schema_headers() pois os headers serão dinâmicos da planilha.
 
     def _populate_sheet_selector(self):
         """Popula o QComboBox com os nomes das planilhas do arquivo Excel."""
@@ -155,7 +157,7 @@ class EngenhariaWorkflowTool(QWidget):
                 ws.delete_rows(row_idx)
 
             # Cabeçalhos fixos para o formato de salvamento do workflow
-            # Estes são internos à ferramenta e não vêm de db.xlsx
+            # Estes são internos à ferramenta e definem o "schema" do workflow salvo.
             workflow_headers = ["Tipo", "ID", "X", "Y", "Largura", "Altura", "Texto", "Cor", "Conexões"]
             ws.append(workflow_headers) 
 
@@ -182,7 +184,7 @@ class EngenhariaWorkflowTool(QWidget):
                     node_height,
                     node_text,
                     node_color,
-                    json.dumps(connections)
+                    json.dumps(connections) # Serializa lista vazia de conexões
                 ]
                 ws.append(row_data)
 
@@ -195,7 +197,7 @@ class EngenhariaWorkflowTool(QWidget):
                     "Link",
                     "", # Links não têm ID próprio neste esquema simplificado
                     "", "", "", "", "", "", # Campos vazios para links
-                    json.dumps(link_connections)
+                    json.dumps(link_connections) # Serializa as conexões de link
                 ]
                 ws.append(row_data)
 
@@ -224,15 +226,19 @@ class EngenhariaWorkflowTool(QWidget):
 
             sheet = wb[current_sheet_name]
             
-            # Cabeçalhos são lidos da primeira linha da planilha, mas para o workflow,
-            # esperamos um formato específico. Se a primeira linha não se parece com os cabeçalhos esperados,
-            # ou está vazia, podemos considerar a planilha como "sem dados de workflow".
+            # Carrega cabeçalhos da primeira linha da planilha
             headers = [cell.value for cell in sheet[1]] if sheet.max_row > 0 else []
-            # Não há necessidade de mapeamento complexo, apenas garante que os índices esperados existam
-            # Se a planilha é recém-criada ou vazia, headers estará vazio.
-
+            
             # Mapa para acesso fácil às colunas por nome
             header_col_map = {h: idx for idx, h in enumerate(headers)}
+
+            # Verifica se os cabeçalhos esperados para o workflow estão presentes
+            expected_headers = ["Tipo", "ID", "X", "Y", "Largura", "Altura", "Texto", "Cor", "Conexões"]
+            if not all(h in header_col_map for h in expected_headers):
+                QMessageBox.information(self, "Planilha Vazia ou Incompatível", 
+                                        f"A planilha '{current_sheet_name}' está vazia ou não possui o formato esperado de workflow. Adicionando elementos de amostra.")
+                self._add_sample_diagram_elements_if_empty()
+                return
 
             loaded_nodes = {} # Mapeia IDs de nós para os objetos QGraphicsRectItem
             max_id = 0
@@ -240,10 +246,12 @@ class EngenhariaWorkflowTool(QWidget):
             for row_idx in range(2, sheet.max_row + 1): # Começa da segunda linha para pular cabeçalhos
                 row_values = [cell.value for cell in sheet[row_idx]]
                 
-                # Acessa os valores por índice do mapa
+                # Função auxiliar para obter valor de célula de forma segura
                 def get_val(header_name):
                     col_idx = header_col_map.get(header_name)
-                    return row_values[col_idx] if col_idx is not None and col_idx < len(row_values) else None
+                    if col_idx is not None and col_idx < len(row_values):
+                        return row_values[col_idx]
+                    return None
 
                 row_type = get_val("Tipo")
 
@@ -269,7 +277,7 @@ class EngenhariaWorkflowTool(QWidget):
                             num_part = int(node_id.split('_')[1])
                             max_id = max(max_id, num_part)
                     except ValueError:
-                        pass # Ignora IDs inválidos
+                        pass # Ignora IDs inválidos que não seguem o padrão node_X
 
                 elif row_type == "Link":
                     link_data_str = get_val("Conexões")
@@ -297,11 +305,10 @@ class EngenhariaWorkflowTool(QWidget):
 
             self.next_node_id = max_id + 1 if max_id > 0 else 1 # Atualiza o next_node_id
 
-            if not self.nodes and not self.links: # Se nada foi carregado, adiciona exemplos
+            if not self.nodes and not self.links: # Se nada foi carregado (mesmo após tentar), adiciona exemplos
                 self._add_sample_diagram_elements_if_empty()
             else:
                 QMessageBox.information(self, "Sucesso", f"Workflow carregado de '{current_sheet_name}' em '{os.path.basename(self.file_path)}'.")
-
 
         except Exception as e:
             QMessageBox.critical(self, "Erro ao Carregar", f"Não foi possível carregar o workflow da aba '{current_sheet_name}': {e}")
@@ -310,7 +317,7 @@ class EngenhariaWorkflowTool(QWidget):
 
     def _add_sample_diagram_elements_if_empty(self):
         """Adiciona alguns elementos de exemplo à cena do diagrama SOMENTE se ela estiver vazia."""
-        if not self.nodes and not self.links:
+        if not self.nodes and not self.links: # Verifica se a cena está realmente vazia
             # Garante que o next_node_id começa em 1 ao adicionar amostras
             self.next_node_id = 1
 
@@ -346,17 +353,16 @@ class EngenhariaWorkflowTool(QWidget):
             pen.setWidth(2)
             
             link1 = self.scene.addLine(node1_rect.x() + node1_rect.rect().width(), node1_rect.y() + node1_rect.rect().height() / 2,
-                                       node2_rect.x(), node2_rect.y() + node2_rect.rect().height() / 2, pen)
+                                     node2_rect.x(), node2_rect.y() + node2_rect.rect().height() / 2, pen)
             link1.source_node_id = node1_id # Adiciona IDs aos links para salvar
             link1.target_node_id = node2_id
             self.links.append(link1)
 
             link2 = self.scene.addLine(node2_rect.x() + node2_rect.rect().width(), node2_rect.y() + node2_rect.rect().height() / 2,
-                                       node3_rect.x(), node3_rect.y() + node3_rect.rect().height() / 2, pen)
+                                     node3_rect.x(), node3_rect.y() + node3_rect.rect().height() / 2, pen)
             link2.source_node_id = node2_id
             link2.target_node_id = node3_id
             self.links.append(link2)
-
 
     def _add_task_node(self):
         """Adiciona um novo nó de tarefa genérico ao diagrama."""
@@ -379,7 +385,6 @@ class EngenhariaWorkflowTool(QWidget):
 
         self.view.centerOn(node_rect)
         QMessageBox.information(self, "Nó Adicionado", f"Nó '{node_text}' adicionado com ID: {new_node_id}.")
-
 
     def _add_dependency_link(self):
         """
@@ -447,22 +452,38 @@ if __name__ == "__main__":
     
     # Cria/Atualiza um arquivo engenharia.xlsx de teste
     test_file_path = os.path.join(user_sheets_dir_test, DEFAULT_DATA_EXCEL_FILENAME)
-    if os.path.exists(test_file_path):
-        os.remove(test_file_path) # Garante que começamos com um arquivo limpo
     
-    # Cria um novo workbook e salva-o com as sheets padrão para engenharia
-    wb_eng = openpyxl.Workbook()
-    ws_estrutura = wb_eng.active
-    ws_estrutura.title = "Estrutura"
-    ws_estrutura.append(["part_number", "parent_part_number", "quantidade", "materia_prima"])
-    ws_estrutura.append(["PROD-001", "", 1, "Não"])
-    ws_estrutura.append(["COMP-001", "PROD-001", 2, "Não"])
-    
-    ws_workflow = wb_eng.create_sheet(DEFAULT_SHEET_NAME) # Cria a sheet 'Workflows' vazia inicialmente
-    # A ferramenta adicionará os cabeçalhos do workflow na primeira vez que salvar.
-    
-    wb_eng.save(test_file_path)
-    print(f"Arquivo de teste '{DEFAULT_DATA_EXCEL_FILENAME}' criado/atualizado com abas de exemplo.")
+    # Garante que o arquivo de teste tenha uma planilha "Workflows" com os cabeçalhos corretos
+    try:
+        if os.path.exists(test_file_path):
+            wb = openpyxl.load_workbook(test_file_path)
+            # Remove a planilha 'Workflows' se ela já existir para recriá-la com os cabeçalhos corretos
+            if DEFAULT_SHEET_NAME in wb.sheetnames:
+                del wb[DEFAULT_SHEET_NAME]
+        else:
+            wb = openpyxl.Workbook()
+        
+        ws_estrutura = None
+        if "Estrutura" in wb.sheetnames:
+            ws_estrutura = wb["Estrutura"]
+        else:
+            ws_estrutura = wb.active # Pega a ativa se não existir, ou cria uma nova
+            ws_estrutura.title = "Estrutura"
+            ws_estrutura.append(["part_number", "parent_part_number", "quantidade", "materia_prima"])
+            ws_estrutura.append(["PROD-001", "", 1, "Não"])
+            ws_estrutura.append(["COMP-001", "PROD-001", 2, "Não"])
+        
+        ws_workflow = wb.create_sheet(DEFAULT_SHEET_NAME) # Cria a sheet 'Workflows'
+        # Adiciona os cabeçalhos do workflow na primeira linha para garantir consistência
+        ws_workflow.append(["Tipo", "ID", "X", "Y", "Largura", "Altura", "Texto", "Cor", "Conexões"])
+        
+        wb.save(test_file_path)
+        print(f"Arquivo de teste '{DEFAULT_DATA_EXCEL_FILENAME}' criado/atualizado com abas de exemplo.")
+
+    except Exception as e:
+        print(f"Erro ao preparar engenharia.xlsx para teste: {e}")
+        sys.exit(1) # Sai se não conseguir preparar o arquivo de teste
+
 
     window = EngenhariaWorkflowTool(file_path=test_file_path, sheet_name=DEFAULT_SHEET_NAME)
     window.show()

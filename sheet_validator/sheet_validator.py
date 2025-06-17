@@ -1,186 +1,165 @@
 import os
 import openpyxl
+import sys
+from PyQt5.QtWidgets import QApplication, QMessageBox # Importa QApplication e QMessageBox
 
-# Define os caminhos dos diretórios relativos à raiz do projeto
-# O script assume que será executado da raiz do projeto 5REV-SHEETS
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-USER_SHEETS_DIR = os.path.join(PROJECT_ROOT, "user_sheets")
-APP_SHEETS_DIR = os.path.join(PROJECT_ROOT, "app_sheets")
+# Definindo caminhos de forma dinâmica a partir da localização do script
+current_dir = os.path.dirname(os.path.abspath(__file__))
+# Navega de 'sheet_validator' para a raiz do projeto
+project_root = os.path.dirname(current_dir)
+
+USER_SHEETS_DIR = os.path.join(project_root, "user_sheets")
+APP_SHEETS_DIR = os.path.join(project_root, "app_sheets")
+# O db.xlsx está em user_sheets
 DB_EXCEL_PATH = os.path.join(USER_SHEETS_DIR, "db.xlsx")
 
-def get_db_db_schema():
+# Garante que os diretórios existam
+os.makedirs(USER_SHEETS_DIR, exist_ok=True)
+os.makedirs(APP_SHEETS_DIR, exist_ok=True)
+# Garante que o diretório 'sheet_validator' (onde este script reside) exista
+os.makedirs(os.path.dirname(os.path.abspath(__file__)), exist_ok=True)
+
+
+def _load_db_db_schema():
     """
-    Carrega o schema esperado da planilha 'db_db' em db.xlsx.
-    Retorna um dicionário aninhado:
-    {
-        'caminho/do/arquivo.xlsx': {
-            'NomeDaPlanilha': {'Header1', 'Header2', ...} # Set de nomes de cabeçalho
-        }
-    }
+    Carrega o esquema de cabeçalhos da planilha 'db_db' em db.xlsx.
+    A chave do esquema é (caminho_completo_arquivo_normalizado, nome_da_planilha).
+    O nome_da_planilha é lido da coluna 'pagina_arquivo' de db_db.
+    Retorna: um dicionário onde a chave é (caminho_completo_arquivo_normalizado, nome_da_planilha)
+             e o valor é uma lista de cabeçalhos esperados para aquela planilha.
     """
-    expected_schema = {}
+    schema = {}
     try:
         if not os.path.exists(DB_EXCEL_PATH):
-            print(f"Erro: O arquivo db.xlsx não foi encontrado em: {DB_EXCEL_PATH}")
-            return expected_schema
+            print(f"Erro: Arquivo db.xlsx não encontrado em {DB_EXCEL_PATH}. Não é possível carregar o esquema de validação.")
+            return schema
 
         wb = openpyxl.load_workbook(DB_EXCEL_PATH)
         if "db_db" not in wb.sheetnames:
-            print(f"Erro: A planilha 'db_db' não foi encontrada em {DB_EXCEL_PATH}")
-            return expected_schema
+            print("Erro: Planilha 'db_db' não encontrada em db.xlsx. Não é possível carregar o esquema de validação.")
+            return schema
 
         sheet = wb["db_db"]
-        headers = [cell.value for cell in sheet[1]] if sheet.max_row > 0 else []
-        
-        # Mapeia os índices das colunas relevantes
-        header_map = {
-            "Arquivo (Caminho)": -1,
-            "Nome da Coluna (Cabeçalho)": -1,
-            "pagina_arquivo": -1 # Usaremos este para o nome da planilha
-        }
-        for idx, h in enumerate(headers):
-            if h in header_map:
-                header_map[h] = idx
+        headers_row = [cell.value for cell in sheet[1]] if sheet.max_row > 0 else []
+        header_map = {h: idx for idx, h in enumerate(headers_row)}
 
-        if any(idx == -1 for key, idx in header_map.items() if key != "descr_variavel"): # 'descr_variavel' é opcional para esta função
-            print(f"Aviso: A planilha 'db_db' em {DB_EXCEL_PATH} não possui os cabeçalhos essenciais: {list(header_map.keys())}. "
-                  "O carregamento pode estar incompleto.")
-            
+        required_headers_for_schema = ["Arquivo (Caminho)", "Nome da Coluna (Cabeçalho)", "pagina_arquivo"]
+        if not all(h in header_map for h in required_headers_for_schema):
+            print(f"Erro: A planilha 'db_db' não possui todos os cabeçalhos obrigatórios para o esquema de validação: {', '.join(required_headers_for_schema)}")
+            return schema
+
         for row_idx in range(2, sheet.max_row + 1):
             row_values = [cell.value for cell in sheet[row_idx]]
             
-            file_path_raw = row_values[header_map["Arquivo (Caminho)"]] if header_map["Arquivo (Caminho)"] != -1 and header_map["Arquivo (Caminho)"] < len(row_values) else None
-            column_name = row_values[header_map["Nome da Coluna (Cabeçalho)"]] if header_map["Nome da Coluna (Cabeçalho)"] != -1 and header_map["Nome da Coluna (Cabeçalho)"] < len(row_values) else None
-            sheet_name_from_db = row_values[header_map["pagina_arquivo"]] if header_map["pagina_arquivo"] != -1 and header_map["pagina_arquivo"] < len(row_values) else None
-
-            if file_path_raw and column_name and sheet_name_from_db:
-                normalized_file_path = file_path_raw.replace('\\', '/') # Normaliza para consistência
-                
-                if normalized_file_path not in expected_schema:
-                    expected_schema[normalized_file_path] = {}
-                
-                if sheet_name_from_db not in expected_schema[normalized_file_path]:
-                     expected_schema[normalized_file_path][sheet_name_from_db] = set()
-
-                expected_schema[normalized_file_path][sheet_name_from_db].add(str(column_name))
-    except Exception as e:
-        print(f"Erro ao carregar schema de db_db: {e}")
-    return expected_schema
-
-def get_actual_sheet_headers(directory_path, base_path_for_rel):
-    """
-    Coleta os cabeçalhos reais de todas as planilhas Excel em um determinado diretório.
-    Retorna um dicionário aninhado:
-    {
-        'caminho/do/arquivo.xlsx': {
-            'NomeDaPlanilha': {'Header1', 'Header2', ...} # Set de nomes de cabeçalho
-        }
-    }
-    """
-    actual_headers = {}
-    for filename in os.listdir(directory_path):
-        if filename.endswith('.xlsx'):
-            file_full_path = os.path.join(directory_path, filename)
-            file_rel_path = os.path.relpath(file_full_path, base_path_for_rel).replace('\\', '/')
-            try:
-                wb = openpyxl.load_workbook(file_full_path)
-                for sheet_name in wb.sheetnames:
-                    sheet = wb[sheet_name]
-                    if sheet.max_row > 0:
-                        headers = [cell.value for cell in sheet[1] if cell.value is not None]
-                        if file_rel_path not in actual_headers:
-                            actual_headers[file_rel_path] = {}
-                        actual_headers[file_rel_path][sheet_name] = {str(h) for h in headers} # Usa um set para facilitar comparação
-            except Exception as e:
-                print(f"Aviso: Não foi possível ler o arquivo {filename} ou uma de suas planilhas: {e}")
-    return actual_headers
-
-def validate_db_db_consistency():
-    """
-    Verifica a consistência dos dados de db_db com os cabeçalhos reais das outras planilhas.
-    Retorna um dicionário de diferenças.
-    """
-    print("\n--- Iniciando validação de consistência de db_db ---")
-    
-    expected_schema = get_db_db_schema()
-    if not expected_schema:
-        print("Nenhum schema de db_db carregado. Validação não pode prosseguir.")
-        return {"error": "No db_db schema loaded."}
-
-    all_actual_headers = {}
-    all_actual_headers.update(get_actual_sheet_headers(USER_SHEETS_DIR, PROJECT_ROOT))
-    all_actual_headers.update(get_actual_sheet_headers(APP_SHEETS_DIR, PROJECT_ROOT))
-
-    differences = {
-        "missing_files_in_actual": [], # Arquivos/planilhas em db_db mas não no sistema de arquivos
-        "extra_files_in_actual": [],   # Arquivos/planilhas no sistema de arquivos mas não em db_db
-        "header_mismatches": []        # Discrepâncias de cabeçalho dentro das planilhas mapeadas
-    }
-
-    # 1. Verificar arquivos e planilhas que estão em db_db mas não existem no sistema de arquivos ou não contêm a sheet mapeada
-    for db_file_rel_path, db_sheets_data in expected_schema.items():
-        for db_sheet_name, db_expected_headers_set in db_sheets_data.items():
-            if db_file_rel_path not in all_actual_headers or db_sheet_name not in all_actual_headers[db_file_rel_path]:
-                differences["missing_files_in_actual"].append(
-                    f"'{db_file_rel_path}' -> Planilha: '{db_sheet_name}' (Mapeado em db_db, mas não encontrado no sistema de arquivos/planilha)."
-                )
-
-    # 2. Verificar arquivos e planilhas que estão no sistema de arquivos mas não em db_db
-    for actual_file_rel_path, actual_sheets_data in all_actual_headers.items():
-        for actual_sheet_name, actual_headers_set in actual_sheets_data.items():
-            is_mapped_in_db_db = False
-            if actual_file_rel_path in expected_schema and actual_sheet_name in expected_schema[actual_file_rel_path]:
-                is_mapped_in_db_db = True
+            file_path_raw = row_values[header_map["Arquivo (Caminho)"]] if "Arquivo (Caminho)" in header_map and header_map["Arquivo (Caminho)"] < len(row_values) else None
+            column_name = row_values[header_map["Nome da Coluna (Cabeçalho)"]] if "Nome da Coluna (Cabeçalho)" in header_map and header_map["Nome da Coluna (Cabeçalho)"] < len(row_values) else None
             
-            if not is_mapped_in_db_db:
-                differences["extra_files_in_actual"].append(
-                    f"'{actual_file_rel_path}' -> Planilha: '{actual_sheet_name}' (Encontrado no sistema de arquivos, mas não mapeado em db_db)."
-                )
+            # 'sheet_name_in_db' é o valor da coluna 'pagina_arquivo' da db_db, que representa o nome da aba/planilha.
+            sheet_name_in_db = row_values[header_map["pagina_arquivo"]] if "pagina_arquivo" in header_map and header_map["pagina_arquivo"] < len(row_values) else None
 
-    # 3. Verificar discrepâncias de cabeçalho para planilhas mapeadas
-    for db_file_rel_path, db_sheets_data in expected_schema.items():
-        for db_sheet_name, db_expected_headers_set in db_sheets_data.items():
-            if db_file_rel_path in all_actual_headers and db_sheet_name in all_actual_headers[db_file_rel_path]:
-                actual_headers_set = all_actual_headers[db_file_rel_path][db_sheet_name]
+            if file_path_raw and column_name and sheet_name_in_db:
+                # Normaliza o caminho do arquivo completo (resolvendo o relativo para absoluto e depois normalizando barras)
+                full_absolute_path = os.path.normpath(os.path.join(project_root, file_path_raw))
+                key = (full_absolute_path.replace('\\', '/'), str(sheet_name_in_db)) # Usa barras normais para a chave
+                
+                if key not in schema:
+                    schema[key] = []
+                schema[key].append(str(column_name))
 
-                missing_in_actual = db_expected_headers_set - actual_headers_set
-                extra_in_actual = actual_headers_set - db_expected_headers_set
+    except Exception as e:
+        print(f"Erro ao carregar o esquema de validação de db.xlsx: {e}")
+    return schema
 
-                if missing_in_actual or extra_in_actual:
-                    diff_detail = {
-                        "file": db_file_rel_path,
-                        "sheet": db_sheet_name,
-                        "missing_headers": sorted(list(missing_in_actual)),
-                        "extra_headers": sorted(list(extra_in_actual))
-                    }
-                    differences["header_mismatches"].append(diff_detail)
+
+def _validate_all_sheets():
+    """
+    Valida a consistência dos cabeçalhos das planilhas nas pastas user_sheets e app_sheets
+    com base no esquema carregado de db.xlsx.
+    """
+    print("\nIniciando validação de consistência das planilhas...")
+    schema = _load_db_db_schema() # Carrega o esquema
     
-    # Imprimir o relatório
-    if not any(differences.values()):
-        print("\n✅ Todos os arquivos e cabeçalhos estão consistentes com 'db_db'.")
+    if not schema:
+        # A _load_db_db_schema já imprime o erro, mas podemos adicionar um QMessageBox aqui.
+        QMessageBox.warning(None, "Validação Cancelada", "Não foi possível carregar o esquema de validação de db.xlsx. Verifique se 'db.xlsx' e a planilha 'db_db' estão corretos.")
+        return
+
+    validation_results = []
+    
+    directories_to_scan = [USER_SHEETS_DIR, APP_SHEETS_DIR]
+
+    for base_dir in directories_to_scan:
+        for root, _, files in os.walk(base_dir):
+            for file_name in files:
+                # Processa apenas arquivos .xlsx que não são temporários e não é o próprio db.xlsx
+                if file_name.endswith(".xlsx") and not file_name.startswith('~$') and file_name.lower() != "db.xlsx":
+                    file_full_path = os.path.join(root, file_name)
+                    
+                    try:
+                        wb = openpyxl.load_workbook(file_full_path, read_only=True)
+                        actual_sheet_names = wb.sheetnames
+
+                        # Normaliza o caminho do arquivo real para comparação com o schema
+                        normalized_actual_file_path = os.path.normpath(file_full_path).replace('\\', '/')
+
+                        # Validação de sheets ausentes no arquivo real que deveriam estar no schema
+                        for (schema_file_path, schema_sheet_name), expected_headers_list in schema.items():
+                            if normalized_actual_file_path == schema_file_path: # Se é o mesmo arquivo
+                                if schema_sheet_name not in actual_sheet_names:
+                                    validation_results.append(f"AVISO: Planilha '{schema_sheet_name}' esperada em '{os.path.basename(file_full_path)}' (mapeado em db_db) está ausente no arquivo real.")
+
+                        for sheet_name in actual_sheet_names:
+                            sheet = wb[sheet_name]
+                            actual_headers = [cell.value for cell in sheet[1]] if sheet.max_row > 0 else []
+                            actual_headers_set = {str(h) for h in actual_headers if h is not None} # Converte para set para comparação fácil
+
+                            # Tenta encontrar os cabeçalhos esperados para esta combinação de arquivo/planilha no schema
+                            expected_headers_list = schema.get((normalized_actual_file_path, sheet_name), [])
+                            expected_headers_set = {str(h) for h in expected_headers_list if h is not None}
+
+                            if not expected_headers_set: # Se a planilha não está registrada no schema ou o schema está vazio
+                                if actual_headers_set: # Se a planilha real tem cabeçalhos mas não está no schema
+                                    validation_results.append(f"INFO: Planilha '{sheet_name}' em '{os.path.basename(file_full_path)}' tem cabeçalhos (mas não está registrada no esquema db_db). Cabeçalhos encontrados: {', '.join(sorted(list(actual_headers_set)))}")
+                                continue # Não há esquema para validar, então pula para a próxima sheet
+
+                            # Compara os cabeçalhos
+                            missing_headers = expected_headers_set - actual_headers_set
+                            extra_headers = actual_headers_set - expected_headers_set
+
+                            if missing_headers:
+                                validation_results.append(f"ERRO: Na planilha '{sheet_name}' de '{os.path.basename(file_full_path)}', faltam os cabeçalhos: {', '.join(sorted(list(missing_headers)))}")
+                            if extra_headers:
+                                validation_results.append(f"AVISO: Na planilha '{sheet_name}' de '{os.path.basename(file_full_path)}', existem cabeçalhos extras: {', '.join(sorted(list(extra_headers)))}")
+                            
+                            # Validação da ordem dos cabeçalhos (opcional, pode ser muito rigoroso para alguns casos)
+                            # if list(actual_headers_set) != sorted(list(expected_headers_headers)): # Esta é uma verificação simplificada
+                            #     validation_results.append(f"AVISO: A ordem dos cabeçalhos na planilha '{sheet_name}' de '{os.path.basename(file_full_path)}' difere da ordem no esquema db_db.")
+
+                    except Exception as e:
+                        validation_results.append(f"ERRO: Não foi possível processar '{os.path.basename(file_full_path)}' (Planilha: {sheet_name if 'sheet_name' in locals() else 'N/A'}): {e}")
+            
+    if not validation_results:
+        final_message = "✅ Validação concluída: Nenhuma inconsistência encontrada. Todas as planilhas estão consistentes com o esquema db_db."
+        QMessageBox.information(None, "Validação Concluída", final_message)
+        print(f"\n{final_message}")
     else:
-        print("\n--- Relatório de Diferenças de Consistência ---")
-        if differences["missing_files_in_actual"]:
-            print("\n❌ Arquivos/planilhas mapeados em 'db_db' mas ausentes no sistema:")
-            for msg in differences["missing_files_in_actual"]:
-                print(f"  - {msg}")
-        
-        if differences["extra_files_in_actual"]:
-            print("\n❓ Arquivos/planilhas presentes no sistema mas não mapeados em 'db_db':")
-            for msg in differences["extra_files_in_actual"]:
-                print(f"  - {msg}")
+        final_message = "Validação concluída com avisos/erros:\n" + "\n".join(validation_results)
+        QMessageBox.warning(None, "Validação Concluída com Problemas", final_message)
+        print(f"\n{final_message}")
 
-        if differences["header_mismatches"]:
-            print("\n⚠️ Discrepâncias de cabeçalho (db_db vs. Planilha Real):")
-            for diff in differences["header_mismatches"]:
-                print(f"  Arquivo: '{diff['file']}' -> Planilha: '{diff['sheet']}'")
-                if diff['missing_headers']:
-                    print(f"    - Ausentes na planilha: {', '.join(diff['missing_headers'])}")
-                if diff['extra_headers']:
-                    print(f"    - Extras na planilha: {', '.join(diff['extra_headers'])}")
-
-    print("\n--- Validação concluída ---")
-    return differences
 
 if __name__ == "__main__":
-    validate_db_db_consistency()
+    # É crucial criar uma instância QApplication antes de usar qualquer widget PyQt
+    app = QApplication(sys.argv) 
+    
+    if len(sys.argv) > 1:
+        action = sys.argv[1]
+        if action == "validate":
+            _validate_all_sheets()
+        else:
+            print(f"Ação desconhecida: {action}")
+    else:
+        print("Uso: python sheet_validator.py <ação>")
+        print("Ações disponíveis: validate")
+    
+    # app.exec_() # Não é necessário chamar exec_() se o único propósito é exibir QMessageBox e sair

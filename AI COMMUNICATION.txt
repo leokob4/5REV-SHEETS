@@ -1,3 +1,10 @@
+refatorar este como os outros:
+
+nosso script para atualizar o schema db_db não deve criar 
+
+agora no user_settings_tool.py, aproveite para melhorar o código integrando campos de texto para mostrar a informacao do perfil do usuario do nosso "banco de dados .xlsx" na user_sheets
+
+
 Traceback (most recent call last):
   File "C:\Users\leona\OneDrive\Documentos\GitHub\5REV-SHEETS\client\gui.py", line 43, in <module>
     from ui.tools.engenharia_workflow_tool import EngenhariaWorkflowTool # IMPORTANTE: Importar a nova tool
