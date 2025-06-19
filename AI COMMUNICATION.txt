@@ -1,3 +1,5 @@
+então me ajude configurar manualmente minhas planilhas e depois alteramos o sheet_editor.py para conseguir abrir sem nenhum parâmetro, também precisamos adicionar essas tools manualmente em tools.xlsx, também percebi que falta o parâmetro module_path na minha planilha para os validadores simples e normal:
+
 Reler ultimas versões de código enviadas por você para otimização e possível adequação a lógicas novas.
 Faltou implementar pesquisa, vou criar o search_bar.py na pasta ui/tools.
 Implementar mini-console da mesma largura do Espaço de trabalho, com uma linha para input e 3 para leitura ajustáveis.
