@@ -1,6 +1,14 @@
-
-
-melhorar descricoes diferenciando cada um, dizendo o que faz e saída do sheet_validator_simple
+Reler ultimas versões de código enviadas por você para otimização e possível adequação a lógicas novas.
+Faltou implementar pesquisa, vou criar o search_bar.py na pasta ui/tools.
+Implementar mini-console da mesma largura do Espaço de trabalho, com uma linha para input e 3 para leitura ajustáveis.
+______
+Para não utilizar mais a planilha workspace_data vamos alterar as referências para a planilha engenharia.xlsx em todas partes necessárias, segue a nova estrutura da planilha engenharia.xlsx:^
+{part_number;	part_description;	parent_part_number;	unidade_padrao_parent_part;	concat_child_part_pn_list_comma;	materia_prima_unidade;	materia_prima_quantidade;	part_type;}
+100001;	Chapa de Aço Carbono 1/2";	200002;	KG;	;	;	;	item;
+100002;	Motor Diesel Cummins X20;	200001;	PC;	;	;	;	purchased_part;
+100003;	Cilindro Hidráulico Principal;	200003;	PC;	;	;	;	purchased_part;
+100004;	Pneu Off-Road 29.5R25;	200001;	SC;	;	;	;	purchased_part;
+Melhorar descricoes diferenciando cada um dos sheet validators, dizendo o que faz e saída do sheet_validator_simple na interface visível pelo usuário.
 _____
 acho que ainda dá para melhorar nosso código python confiando mais na planilha tools.xlsx, um código menor geralmente é mais dinâmico e a expansão dele traz adaptabilidade.
 

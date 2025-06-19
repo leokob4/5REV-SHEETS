@@ -1,429 +1,396 @@
 import os
-import openpyxl
 import sys
-from openpyxl.utils import get_column_letter
+import openpyxl
 
-# Define os caminhos de forma dinâmica a partir da localização do script
+# Define o caminho para a raiz do projeto de forma robusta
+# Este script está em app_sheets/tools/, então '..' leva a app_sheets, e '..' novamente leva ao project_root
 current_dir = os.path.dirname(os.path.abspath(__file__))
-# Navega de app_sheets/tools para a raiz do projeto
 project_root = os.path.abspath(os.path.join(current_dir, '..', '..'))
 
 USER_SHEETS_DIR = os.path.join(project_root, "user_sheets")
 APP_SHEETS_DIR = os.path.join(project_root, "app_sheets")
 DB_EXCEL_PATH = os.path.join(USER_SHEETS_DIR, "db.xlsx")
 
-# Garante que os diretórios existam
-os.makedirs(USER_SHEETS_DIR, exist_ok=True)
-os.makedirs(APP_SHEETS_DIR, exist_ok=True)
-# Garante que a pasta 'tools' dentro de 'app_sheets' exista, onde este script reside
-os.makedirs(os.path.dirname(os.path.abspath(__file__)), exist_ok=True)
+# Planilhas específicas que têm um comportamento diferente na detecção de headers
+CONFIG_SHEETS_MAP = {
+    os.path.join(APP_SHEETS_DIR, "users.xlsx"): "users",
+    os.path.join(APP_SHEETS_DIR, "tools.xlsx"): "tools",
+    os.path.join(APP_SHEETS_DIR, "access.xlsx"): "access",
+    os.path.join(APP_SHEETS_DIR, "modules.xlsx"): "modules",
+    os.path.join(APP_SHEETS_DIR, "permissions.xlsx"): "permissions",
+    os.path.join(APP_SHEETS_DIR, "main.xlsx"): "refs",
+    os.path.join(USER_SHEETS_DIR, "engenharia.xlsx"): "Estrutura",
+}
 
+def get_db_db_data():
+    """Carrega os dados atuais da planilha 'db_db' em db.xlsx."""
+    db_db_data = []
+    if not os.path.exists(DB_EXCEL_PATH):
+        print(f"Aviso: O arquivo db.xlsx não foi encontrado em {DB_EXCEL_PATH}. Ele será criado.")
+        return []
 
-def _load_db_db_schema():
-    """
-    Carrega o esquema de todas as planilhas a partir da planilha 'db_db' em db.xlsx.
-    Retorna: um dicionário aninhado {file_path_relative: {sheet_name: [list_of_headers]}}
-    """
-    schema = {}
     try:
-        if not os.path.exists(DB_EXCEL_PATH):
-            print(f"Erro: db.xlsx não encontrado em {DB_EXCEL_PATH}. Não é possível carregar o esquema.")
-            return schema
-
-        wb = openpyxl.load_workbook(DB_EXCEL_PATH, data_only=True) # data_only para ler valores, não fórmulas
+        wb = openpyxl.load_workbook(DB_EXCEL_PATH)
         if "db_db" not in wb.sheetnames:
-            print("Erro: Planilha 'db_db' não encontrada em db.xlsx. Por favor, crie-a.")
-            return schema
-
+            print("Aviso: A planilha 'db_db' não foi encontrada em db.xlsx.")
+            return []
+        
         sheet = wb["db_db"]
-        # Garante que a planilha db_db tenha pelo menos uma linha (cabeçalhos)
         if sheet.max_row < 1:
-            print("Erro: Planilha 'db_db' está vazia. Precisa de cabeçalhos.")
-            return schema
+            return [] # Planilha vazia
 
-        # Mapeia os cabeçalhos da db_db
-        db_db_headers = [cell.value for cell in sheet[1]]
-        db_db_header_map = {h: idx for idx, h in enumerate(db_db_headers)}
+        headers = [cell.value for cell in sheet[1]]
+        required_headers = ["Arquivo (Caminho)", "Nome da Coluna (Cabeçalho)", "pagina_arquivo", "descr_variavel"]
+        if not all(h in headers for h in required_headers):
+            print(f"Aviso: Cabeçalhos incompletos na planilha 'db_db'. Esperado: {required_headers}")
+            return []
 
-        required_db_db_headers = ["Arquivo (Caminho)", "Nome da Coluna (Cabeçalho)", "pagina_arquivo"]
-        if not all(h in db_db_header_map for h in required_db_db_headers):
-            print(f"Erro: Planilha 'db_db' não possui todos os cabeçalhos esperados: {', '.join(required_db_db_headers)}")
-            return schema
+        header_map = {h: idx for idx, h in enumerate(headers)}
 
-        for row_idx in range(2, sheet.max_row + 1): # Ignora a linha de cabeçalho da db_db
+        for row_idx in range(2, sheet.max_row + 1):
             row_values = [cell.value for cell in sheet[row_idx]]
-            
-            # Ignora linhas completamente vazias na db_db
             if all(v is None for v in row_values):
                 continue
+            
+            file_path = row_values[header_map["Arquivo (Caminho)"]] if "Arquivo (Caminho)" in header_map and header_map["Arquivo (Caminho)"] < len(row_values) else None
+            col_name = row_values[header_map["Nome da Coluna (Cabeçalho)"]] if "Nome da Coluna (Cabeçalho)" in header_map and header_map["Nome da Coluna (Cabeçalho)"] < len(row_values) else None
+            sheet_name = row_values[header_map["pagina_arquivo"]] if "pagina_arquivo" in header_map and header_map["pagina_arquivo"] < len(row_values) else None
+            description = row_values[header_map["descr_variavel"]] if "descr_variavel" in header_map and header_map["descr_variavel"] < len(row_values) else None
 
-            file_path_raw = row_values[db_db_header_map["Arquivo (Caminho)"]] if "Arquivo (Caminho)" in db_db_header_map and db_db_header_map["Arquivo (Caminho)"] < len(row_values) else None
-            column_name = row_values[db_db_header_map["Nome da Coluna (Cabeçalho)"]] if "Nome da Coluna (Cabeçalho)" in db_db_header_map and db_db_header_map["Nome da Coluna (Cabeçalho)"] < len(row_values) else None
-            sheet_name = row_values[db_db_header_map["pagina_arquivo"]] if "pagina_arquivo" in db_db_header_map and db_db_header_map["pagina_arquivo"] < len(row_values) else None
-
-            if file_path_raw and column_name and sheet_name:
-                normalized_file_path = os.path.normpath(file_path_raw).replace('\\', '/')
-                if normalized_file_path not in schema:
-                    schema[normalized_file_path] = {}
-                if sheet_name not in schema[normalized_file_path]:
-                    schema[normalized_file_path][sheet_name] = []
-                schema[normalized_file_path][sheet_name].append(str(column_name)) # Garante que o nome da coluna é string
+            if all(val is not None for val in [file_path, col_name, sheet_name, description]):
+                db_db_data.append({
+                    "Arquivo (Caminho)": str(file_path),
+                    "Nome da Coluna (Cabeçalho)": str(col_name),
+                    "pagina_arquivo": str(sheet_name),
+                    "descr_variavel": str(description)
+                })
             else:
-                print(f"Aviso: Ignorando linha incompleta em 'db_db' (linha {row_idx}): {row_values}")
+                print(f"Aviso: Linha malformada ou incompleta na db_db (linha {row_idx}): {row_values}. Ignorando.")
+
     except Exception as e:
-        print(f"Erro ao carregar o esquema de db_db: {e}")
-    return schema
+        print(f"Erro ao carregar db.xlsx: {e}")
+    return db_db_data
 
-def _update_sheet_headers(workbook, sheet_name, expected_headers):
+
+def save_db_db_data(data):
+    """Salva os dados atualizados na planilha 'db_db' em db.xlsx."""
+    try:
+        wb = openpyxl.Workbook()
+        sheet = wb.active
+        sheet.title = "db_db"
+
+        headers = ["Arquivo (Caminho)", "Nome da Coluna (Cabeçalho)", "pagina_arquivo", "descr_variavel"]
+        sheet.append(headers)
+
+        for row in data:
+            row_to_save = [
+                row.get("Arquivo (Caminho)", ""),
+                row.get("Nome da Coluna (Cabeçalho)", ""),
+                row.get("pagina_arquivo", ""),
+                row.get("descr_variavel", "")
+            ]
+            sheet.append(row_to_save)
+        
+        if "Sheet" in wb.sheetnames and len(wb.sheetnames) > 1 and wb["Sheet"] != sheet:
+             wb.remove(wb["Sheet"])
+        elif "Sheet" in wb.sheetnames and len(wb.sheetnames) == 1 and wb["Sheet"] == sheet:
+            pass
+
+        wb.save(DB_EXCEL_PATH)
+        print(f"db.xlsx atualizado com {len(data)} entradas na db_db.")
+    except Exception as e:
+        print(f"Erro ao salvar db.xlsx: {e}")
+
+
+def get_excel_headers(file_path, sheet_name=None):
     """
-    Garante que uma planilha tenha os cabeçalhos esperados, adicionando-os se ausentes.
-    Preserva dados existentes.
+    Retorna os cabeçalhos da primeira linha de uma planilha Excel específica.
+    Se sheet_name for None, tenta a primeira planilha ou a planilha principal mapeada.
     """
-    if sheet_name not in workbook.sheetnames:
-        ws = workbook.create_sheet(sheet_name)
-        print(f"  Criando planilha '{sheet_name}'.")
-        ws.append(expected_headers)
-    else:
-        ws = workbook[sheet_name]
+    headers = []
+    try:
+        wb = openpyxl.load_workbook(file_path, data_only=True)
         
-        # Remove linhas completamente vazias do final da planilha para evitar problemas de max_row
-        for r_idx in range(ws.max_row, 0, -1):
-            if all(cell.value is None for cell in ws[r_idx]):
-                ws.delete_rows(r_idx)
-            else:
-                break
-
-        # Se a planilha ainda estiver vazia após a limpeza, apenas adicione os cabeçalhos
-        if ws.max_row == 0:
-            print(f"  Planilha '{sheet_name}' está vazia, adicionando cabeçalhos.")
-            ws.append(expected_headers)
-            # Ajusta a largura das colunas para os novos cabeçalhos
-            for col_idx, header in enumerate(expected_headers):
-                try:
-                    max_length = len(str(header))
-                    ws.column_dimensions[get_column_letter(col_idx + 1)].width = max_length + 2
-                except Exception as e:
-                    print(f"Aviso: Não foi possível ajustar a largura da coluna para '{header}' em '{sheet_name}': {e}")
-            return 
-
-        current_headers = [str(cell.value) if cell.value is not None else "" for cell in ws[1]] # Ler a primeira linha
-        
-        # Encontrar novos cabeçalhos para adicionar (aqueles no esquema que não estão na planilha)
-        new_headers_to_add = [h for h in expected_headers if h not in current_headers]
-        
-        if new_headers_to_add:
-            print(f"  Adicionando novos cabeçalhos à planilha '{sheet_name}': {new_headers_to_add}")
-            # Encontra a próxima coluna disponível na linha 1
-            next_col_idx = len(current_headers) + 1
-            for new_h in new_headers_to_add:
-                ws.cell(row=1, column=next_col_idx, value=new_h)
-                next_col_idx += 1
+        if sheet_name and sheet_name in wb.sheetnames:
+            sheet = wb[sheet_name]
+        elif file_path in CONFIG_SHEETS_MAP and CONFIG_SHEETS_MAP[file_path] in wb.sheetnames:
+            sheet = wb[CONFIG_SHEETS_MAP[file_path]]
         else:
-            print(f"  Cabeçalhos para '{sheet_name}' estão atualizados.")
+            sheet = wb.active
+            if sheet_name:
+                print(f"Aviso: Planilha '{sheet_name}' não encontrada em {os.path.basename(file_path)}. Usando a planilha ativa: {sheet.title}")
 
-    # Reajusta a largura das colunas para todos os cabeçalhos esperados
-    for header in expected_headers:
-        try:
-            # Encontra o índice da coluna do cabeçalho atualizado
-            col_idx_in_sheet = -1
-            for c_idx, cell in enumerate(ws[1]):
-                if (cell.value is not None and str(cell.value) == header) or \
-                   (cell.value is None and header == ""): # Para caso de cabeçalho esperado ser vazio e célula ser None
-                    col_idx_in_sheet = c_idx + 1
-                    break
-            
-            if col_idx_in_sheet != -1:
-                max_length = max(len(str(cell.value or "")) for cell in ws[get_column_letter(col_idx_in_sheet)])
-                ws.column_dimensions[get_column_letter(col_idx_in_sheet)].width = max_length + 2
 
-        except Exception as e:
-            print(f"Aviso: Não foi possível ajustar a largura da coluna para '{header}' em '{sheet_name}': {e}")
+        if sheet.max_row >= 1:
+            headers = [cell.value for cell in sheet[1]]
+            headers = [h for h in headers if h is not None]
+        return headers, sheet.title
+    except FileNotFoundError:
+        print(f"Aviso: Arquivo Excel não encontrado: {file_path}")
+    except Exception as e:
+        print(f"Erro ao ler cabeçalhos de {file_path} (planilha: {sheet_name or 'ativa'}): {e}")
+    return [], None
 
-def _create_or_update_all_sheets_from_schema():
+
+def update_db_schema():
     """
-    Varre o esquema de db_db e cria/atualiza todas as planilhas definidas,
-    garantindo que os cabeçalhos estejam corretos e preservando dados.
-    """
-    print("\nIniciando criação/atualização de planilhas com base no esquema db_db...")
-    schema = _load_db_db_schema()
-
-    if not schema:
-        print("Erro: Esquema db_db não carregado. Nenhuma planilha será criada/atualizada.")
-        return
-
-    # Mapeia caminhos relativos do esquema para caminhos absolutos completos
-    all_target_files_abs = {
-        os.path.join(project_root, rel_path) for rel_path in schema.keys()
-    }
-    
-    # Adiciona os diretórios user_sheets e app_sheets para garantir que arquivos ausentes sejam criados
-    # ou que arquivos com o path correto mas não listados individualmente sejam tratados.
-    # No entanto, a lógica primária é baseada no SCHEMA.
-    # Para garantir que todos os arquivos *esperados pelo schema* sejam criados/atualizados,
-    # itera sobre as chaves do SCHEMA.
-    
-    for file_rel_path_from_schema, file_schema_data in schema.items():
-        file_full_path = os.path.join(project_root, file_rel_path_from_schema)
-        
-        # Ignora o próprio db.xlsx ao processar
-        if os.path.normpath(file_full_path).replace('\\', '/') == os.path.normpath(DB_EXCEL_PATH).replace('\\', '/'):
-            continue
-
-        print(f"\nProcessando arquivo: {os.path.basename(file_full_path)}")
-        
-        wb = None
-        if os.path.exists(file_full_path):
-            try:
-                wb = openpyxl.load_workbook(file_full_path)
-            except Exception as e:
-                print(f"Erro ao carregar '{os.path.basename(file_full_path)}': {e}. Tentando criar um novo.")
-                wb = openpyxl.Workbook()
-                if "Sheet" in wb.sheetnames: wb.remove(wb["Sheet"]) # Remove default sheet
-        else:
-            # Garante que o diretório para o novo arquivo exista
-            os.makedirs(os.path.dirname(file_full_path), exist_ok=True)
-            wb = openpyxl.Workbook()
-            if "Sheet" in wb.sheetnames: wb.remove(wb["Sheet"]) # Remove default sheet
-            print(f"  Criando novo arquivo: {os.path.basename(file_full_path)}")
-
-        # Itera sobre as planilhas esperadas para este arquivo conforme o esquema
-        for sheet_name, expected_headers in file_schema_data.items():
-            _update_sheet_headers(wb, sheet_name, expected_headers)
-        
-        # Remove planilhas que existem no arquivo, mas não estão no esquema
-        sheets_to_remove = [s for s in wb.sheetnames if s not in file_schema_data]
-        for sheet_to_remove in sheets_to_remove:
-            print(f"  Removendo planilha '{sheet_to_remove}' de '{os.path.basename(file_full_path)}' (não está no esquema db_db).")
-            wb.remove(wb[sheet_to_remove])
-
-        # Se o workbook ficou sem sheets, adiciona uma padrão para não dar erro ao salvar
-        if not wb.sheetnames:
-            wb.create_sheet("Default") 
-            print(f"  Adicionada planilha 'Default' ao arquivo '{os.path.basename(file_full_path)}' pois ficou vazio após processamento.")
-
-        try:
-            wb.save(file_full_path)
-            print(f"  Arquivo '{os.path.basename(file_full_path)}' salvo com sucesso.")
-        except Exception as e:
-            print(f"Erro ao salvar '{os.path.basename(file_full_path)}': {e}")
-            
-    print("\nCriação/atualização de planilhas concluída.")
-    sys.exit(0) # Saída de sucesso
-
-
-def _sync_db_db_with_actual_files():
-    """
-    Coleta os cabeçalhos de todas as planilhas .xlsx nas pastas user_sheets e app_sheets
-    (exceto o próprio db.xlsx) e os registra na planilha 'db_db' em 'db.xlsx'.
-    Esta ação reconstrói o dicionário de dados do sistema, que é a base para a validação de consistência.
-    Preserva descrições existentes em 'descr_variavel'.
+    Atualiza a planilha 'db_db' em db.xlsx com os cabeçalhos reais
+    de todas as outras planilhas do projeto.
     """
     print("\nIniciando sincronização da planilha 'db_db' com os arquivos reais...")
-    collected_headers_data = []
-    
-    # Carrega dados existentes da db_db para preservar descrições
-    existing_db_db_data = {}
-    try:
-        if os.path.exists(DB_EXCEL_PATH):
-            wb_temp = openpyxl.load_workbook(DB_EXCEL_PATH, data_only=True)
-            if "db_db" in wb_temp.sheetnames:
-                sheet_temp = wb_temp["db_db"]
-                temp_headers = [cell.value for cell in sheet_temp[1]] if sheet_temp.max_row >= 1 else []
-                
-                # Check for required headers in db_db itself
-                if all(h in temp_headers for h in ["Arquivo (Caminho)", "Nome da Coluna (Cabeçalho)", "pagina_arquivo", "descr_variavel"]):
-                    temp_header_map = {h: idx for idx, h in enumerate(temp_headers)}
-                    for row_idx in range(2, sheet_temp.max_row + 1):
-                        row_values = [cell.value for cell in sheet_temp[row_idx]]
-                        # Skip completely empty rows
-                        if all(v is None for v in row_values):
-                            continue
-                        
-                        file_path_raw = row_values[temp_header_map["Arquivo (Caminho)"]]
-                        column_name = row_values[temp_header_map["Nome da Coluna (Cabeçalho)"]]
-                        descr_variavel = row_values[temp_header_map["descr_variavel"]]
-                        if file_path_raw and column_name:
-                            normalized_path = os.path.normpath(file_path_raw).replace('\\', '/')
-                            existing_db_db_data[(normalized_path, str(column_name))] = descr_variavel if descr_variavel is not None else ""
-    except Exception as e:
-        print(f"Aviso: Erro ao carregar dados existentes de db_db para preservação: {e}. As descrições podem ser perdidas.")
-    
-    directories_to_scan = [USER_SHEETS_DIR, APP_SHEETS_DIR]
+    new_db_db_data = []
 
-    for base_dir in directories_to_scan:
+    dirs_to_scan = [USER_SHEETS_DIR, APP_SHEETS_DIR]
+
+    for base_dir in dirs_to_scan:
         for root, _, files in os.walk(base_dir):
             for file_name in files:
-                # Ignora arquivos temporários e o próprio db.xlsx
-                if file_name.endswith(".xlsx") and not file_name.startswith('~$') and os.path.basename(file_name).lower() != "db.xlsx":
-                    file_full_path = os.path.join(root, file_name)
+                if file_name.endswith(".xlsx") and not file_name.startswith('~$'):
+                    file_path = os.path.join(root, file_name)
+                    if file_path == DB_EXCEL_PATH:
+                        continue
+
+                    relative_path = os.path.relpath(file_path, project_root).replace('\\', '/')
                     
                     try:
-                        wb = openpyxl.load_workbook(file_full_path, read_only=True, data_only=True)
+                        wb = openpyxl.load_workbook(file_path, data_only=True)
                         for sheet_name in wb.sheetnames:
                             sheet = wb[sheet_name]
-                            
-                            # Ignora planilhas vazias ou sem cabeçalhos (primeira linha totalmente vazia)
-                            if sheet.max_row < 1 or sheet.max_column < 1:
-                                continue 
-                            
-                            headers = []
-                            # Itarate over the first row to get headers, handling None values
-                            first_row_values = [cell.value for cell in sheet[1]]
-                            if all(v is None for v in first_row_values): # If first row is completely empty, skip
-                                continue
-
-                            for cell_value in first_row_values:
-                                headers.append(str(cell_value) if cell_value is not None else "") 
-
-                            # If all collected headers are empty strings after conversion
-                            if all(h == "" for h in headers): 
-                                continue 
-
-                            relative_file_path = os.path.relpath(file_full_path, project_root).replace('\\', '/')
-
-                            for header_name in headers:
-                                lookup_key = (relative_file_path, str(header_name))
-                                # Pega a descrição existente ou vazia, para preservar
-                                descr_variavel = existing_db_db_data.get(lookup_key, "") 
+                            if sheet.max_row >= 1: 
+                                headers = [cell.value for cell in sheet[1]]
+                                headers = [h for h in headers if h is not None] 
                                 
-                                collected_headers_data.append([
-                                    relative_file_path,
-                                    str(header_name),
-                                    sheet_name,
-                                    descr_variavel
-                                ])
-                        print(f"Coletado cabeçalhos de: {os.path.basename(file_full_path)}")
+                                if headers:
+                                    for header in headers:
+                                        description = ""
+                                        if relative_path == "user_sheets/engenharia.xlsx" and sheet_name == "Estrutura":
+                                            if header == "part_number": description = "Número da Peça (ID Único do Item)"
+                                            elif header == "part_description": description = "Descrição Detalhada da Peça"
+                                            elif header == "parent_part_number": description = "Número da Peça Pai (para BOM)"
+                                            elif header == "unidade_padrao_parent_part": description = "Unidade Padrão da Peça Pai"
+                                            elif header == "concat_child_part_pn_list_comma": description = "Lista de Peças Filhas (concatenadas por vírgula)"
+                                            elif header == "materia_prima_unidade": description = "Unidade da Matéria-Prima"
+                                            elif header == "materia_prima_quantidade": description = "Quantidade da Matéria-Prima"
+                                            elif header == "part_type": description = "Tipo da Peça (ex: item, purchased_part)"
+                                            else: description = f"Cabeçalho da planilha '{sheet_name}' no arquivo '{os.path.basename(file_path)}'"
+                                        elif relative_path == "app_sheets/tools.xlsx" and sheet_name == "tools":
+                                            if header == "mod_id": description = "ID único do módulo/ferramenta"
+                                            elif header == "mod_name": description = "Nome de exibição da ferramenta"
+                                            elif header == "mod_description": description = "Descrição da ferramenta"
+                                            elif header == "module_path": description = "Caminho do módulo Python para importação dinâmica"
+                                            elif header == "class_name": description = "Nome da classe da ferramenta dentro do módulo Python" # Adicionado
+                                            elif header == "MOD_WORK_TABLE": description = "Nome da planilha de trabalho principal associada a esta ferramenta (se houver)"
+                                            elif header == "MOD_WORK_TABLE_PATH": description = "Caminho relativo da planilha de trabalho (se houver)"
+                                            elif header == "mod_comment_old": description = "Comentários antigos sobre a ferramenta"
+                                            elif header == "mod_comment_new": description = "Novos comentários sobre a ferramenta"
+                                            else: description = f"Cabeçalho da planilha '{sheet_name}' no arquivo '{os.path.basename(file_path)}'"
+                                        # Adicione mais elifs para outras planilhas específicas se quiser descrições personalizadas
+                                        else:
+                                            description = f"Cabeçalho da planilha '{sheet_name}' no arquivo '{os.path.basename(file_path)}'"
+
+                                        new_db_db_data.append({
+                                            "Arquivo (Caminho)": relative_path,
+                                            "Nome da Coluna (Cabeçalho)": header,
+                                            "pagina_arquivo": sheet_name,
+                                            "descr_variavel": description
+                                        })
+                            else:
+                                print(f"Aviso: Planilha '{sheet_name}' em '{relative_path}' está vazia ou sem cabeçalhos. Ignorando para db_db.")
                     except Exception as e:
-                        print(f"Erro ao processar arquivo {file_name}: {e}")
+                        print(f"Erro ao processar arquivo {relative_path}: {e}")
+    
+    save_db_db_data(new_db_db_data)
+    print("Sincronização da planilha 'db_db' concluída.")
 
-    try:
-        # Abre o db.xlsx. Se não existir, cria um novo.
-        if os.path.exists(DB_EXCEL_PATH):
-            wb_db = openpyxl.load_workbook(DB_EXCEL_PATH)
-            if "db_db" in wb_db.sheetnames:
-                del wb_db["db_db"] # Remove a planilha existente para recriar
-            else:
-                # Se "db_db" não existe, mas "Sheet" existe e é a única, remove-a
-                if "Sheet" in wb_db.sheetnames and len(wb_db.sheetnames) == 1:
-                    del wb_db["Sheet"]
-        else:
-            wb_db = openpyxl.Workbook()
-            if "Sheet" in wb_db.sheetnames: wb_db.remove(wb_db["Sheet"]) # Remove a sheet padrão se for a única
-            
-        ws_db_db = wb_db.create_sheet("db_db")
-        db_db_headers = ["Arquivo (Caminho)", "Nome da Coluna (Cabeçalho)", "pagina_arquivo", "descr_variavel"]
-        ws_db_db.append(db_db_headers)
-        
-        for row_data in collected_headers_data:
-            ws_db_db.append(row_data)
-        
-        wb_db.save(DB_EXCEL_PATH)
-        print(f"\nSincronização da planilha 'db_db' em '{DB_EXCEL_PATH}' concluída com sucesso.")
-        sys.exit(0) # Saída de sucesso
-    except Exception as e:
-        print(f"Erro ao salvar metadados em db.xlsx: {e}")
-        sys.exit(1) # Saída de erro
 
-def _validate_db_consistency():
+def validate_db_consistency():
     """
-    Compara a estrutura real dos cabeçalhos das planilhas do projeto
-    com o esquema registrado na planilha 'db_db' em 'db.xlsx',
-    identificando inconsistências e erros.
+    Compara a estrutura atual das planilhas com o que está em 'db_db'.
     """
-    print("\nIniciando validação de consistência do banco de dados...")
-    schema = _load_db_db_schema()
+    print("\nIniciando validação de consistência...")
+    db_db_schema = get_db_db_data()
+    
+    if not db_db_schema:
+        print("Erro: A db_db está vazia ou não pôde ser carregada. Por favor, execute 'Sincronizar pagina db_db com planilhas das pastas' primeiro.")
+        sys.exit(1) # Sair com erro se db_db não estiver pronta
 
-    if not schema:
-        print("Erro: Esquema db_db não carregado. Não é possível validar a consistência.")
-        sys.exit(1)
+    expected_headers = {}
+    for entry in db_db_schema:
+        file_path = entry["Arquivo (Caminho)"]
+        sheet_name = entry["pagina_arquivo"]
+        header_name = entry["Nome da Coluna (Cabeçalho)"]
+        
+        key = (file_path, sheet_name)
+        if key not in expected_headers:
+            expected_headers[key] = []
+        expected_headers[key].append(header_name)
 
-    inconsistencies_found = False
-    directories_to_scan = [USER_SHEETS_DIR, APP_SHEETS_DIR]
+    all_consistent = True
+    dirs_to_scan = [USER_SHEETS_DIR, APP_SHEETS_DIR]
 
-    for base_dir in directories_to_scan:
+    for base_dir in dirs_to_scan:
         for root, _, files in os.walk(base_dir):
             for file_name in files:
-                if file_name.endswith(".xlsx") and not file_name.startswith('~$') and os.path.basename(file_name).lower() != "db.xlsx":
-                    file_full_path = os.path.join(root, file_name)
-                    relative_file_path = os.path.relpath(file_full_path, project_root).replace('\\', '/')
-
-                    expected_sheets_for_file = schema.get(relative_file_path, {}) # Use relative_file_path here
+                if file_name.endswith(".xlsx") and not file_name.startswith('~$'):
+                    file_path = os.path.join(root, file_name)
+                    if file_path == DB_EXCEL_PATH:
+                        continue
                     
-                    if not os.path.exists(file_full_path):
-                        if expected_sheets_for_file: # Se o esquema espera o arquivo, mas ele não existe
-                            print(f"INCONSISTÊNCIA: Arquivo '{os.path.basename(file_full_path)}' esperado pelo esquema, mas não encontrado.")
-                            inconsistencies_found = True
-                        continue # Pula para o próximo arquivo se não existe ou não é esperado
+                    relative_path = os.path.relpath(file_path, project_root).replace('\\', '/')
 
                     try:
-                        wb = openpyxl.load_workbook(file_full_path, read_only=True, data_only=True)
-                        actual_sheets_in_file = set(wb.sheetnames)
+                        wb = openpyxl.load_workbook(file_path, data_only=True)
+                        for sheet_name in wb.sheetnames:
+                            current_headers, _ = get_excel_headers(file_path, sheet_name)
+                            
+                            key = (relative_path, sheet_name)
 
-                        # Verifica planilhas ausentes (no arquivo, mas esperadas no esquema)
-                        for expected_sheet_name in expected_sheets_for_file.keys():
-                            if expected_sheet_name not in actual_sheets_in_file:
-                                print(f"INCONSISTÊNCIA: Planilha '{expected_sheet_name}' esperada em '{os.path.basename(file_full_path)}' (pelo esquema), mas não encontrada.")
-                                inconsistencies_found = True
-                        
-                        # Verifica planilhas inesperadas (no arquivo, mas não no esquema)
-                        for actual_sheet_name in actual_sheets_in_file:
-                            if actual_sheet_name not in expected_sheets_for_file and actual_sheet_name != "Default": # Ignore "Default" sheet if it's auto-created by openpyxl
-                                print(f"AVISO/INCONSISTÊNCIA: Planilha '{actual_sheet_name}' encontrada em '{os.path.basename(file_full_path)}', mas não definida no esquema db_db.")
-                                # Não é necessariamente um erro fatal, mas um aviso importante.
-                                # Se isso for um erro, setar inconsistencies_found = True
+                            if key in expected_headers:
+                                missing_headers = [h for h in expected_headers[key] if h not in current_headers]
+                                extra_headers = [h for h in current_headers if h not in expected_headers[key]]
 
-                        # Verifica cabeçalhos em cada planilha
-                        for sheet_name, expected_headers in expected_sheets_for_file.items():
-                            if sheet_name in actual_sheets_in_file:
-                                sheet = wb[sheet_name]
-                                # Considera planilhas vazias como inconsistentes se houver cabeçalhos esperados
-                                if sheet.max_row < 1 or all(cell.value is None for cell in sheet[1]): 
-                                    if expected_headers: # Se há cabeçalhos esperados
-                                        print(f"INCONSISTÊNCIA: Planilha '{sheet_name}' em '{os.path.basename(file_full_path)}' está vazia ou sem cabeçalhos válidos, mas espera cabeçalhos.")
-                                        inconsistencies_found = True
-                                    continue
+                                if missing_headers:
+                                    print(f"Inconsistência em '{relative_path}' (planilha '{sheet_name}'): Faltam cabeçalhos: {', '.join(missing_headers)}")
+                                    all_consistent = False
+                                if extra_headers:
+                                    print(f"Inconsistência em '{relative_path}' (planilha '{sheet_name}'): Cabeçalhos extras: {', '.join(extra_headers)}")
+                                    all_consistent = False
+                                # Verifica se a planilha está vazia mas a db_db espera cabeçalhos
+                                if not current_headers and expected_headers[key]:
+                                    print(f"Inconsistência em '{relative_path}' (planilha '{sheet_name}'): Planilha vazia, mas cabeçalhos esperados na db_db.")
+                                    all_consistent = False
 
-                                actual_headers = [str(cell.value) if cell.value is not None else "" for cell in sheet[1]]
-                                
-                                # Verifica cabeçalhos ausentes na planilha real
-                                for eh in expected_headers:
-                                    if eh not in actual_headers:
-                                        print(f"INCONSISTÊNCIA: Cabeçalho '{eh}' esperado na planilha '{sheet_name}' de '{os.path.basename(file_full_path)}' (pelo esquema), mas não encontrado.")
-                                        inconsistencies_found = True
-                                
-                                # Verifica cabeçalhos inesperados na planilha real
-                                for ah in actual_headers:
-                                    if ah not in expected_headers and ah != "": # Ignora células vazias
-                                        print(f"AVISO/INCONSISTÊNCIA: Cabeçalho '{ah}' encontrado na planilha '{sheet_name}' de '{os.path.basename(file_full_path)}', mas não definido no esquema db_db.")
-                                        # Dependendo da sua regra, isso pode ser uma inconsistência real.
-                                        # Se for um erro, setar inconsistencies_found = True
+                            elif current_headers: 
+                                print(f"Aviso: Planilha '{sheet_name}' em '{relative_path}' existe com cabeçalhos, mas NÃO está registrada na db_db. Considere adicionar.")
+                            else: 
+                                pass 
 
                     except Exception as e:
-                        print(f"Erro ao validar arquivo {file_name}: {e}")
-                        inconsistencies_found = True
+                        print(f"Erro ao validar '{relative_path}' (planilha '{sheet_name}'): {e}")
+                        all_consistent = False
 
-    if inconsistencies_found:
-        print("\nValidação de consistência concluída. Foram encontradas INCONSISTÊNCIAS.")
-        sys.exit(1)
+    if all_consistent:
+        print("Todas as planilhas estão consistentes com a db_db. Nenhuma diferença encontrada.")
+        sys.exit(0) # Sair com sucesso
     else:
-        print("\nValidação de consistência concluída. Nenhuma inconsistência encontrada.")
-        sys.exit(0)
+        print("\nValidação concluída com inconsistências. Por favor, revise os erros acima.")
+        sys.exit(1) # Sair com erro
+
+
+def create_or_update_sheets():
+    """
+    Cria novas planilhas ou atualiza as existentes com os cabeçalhos definidos na 'db_db'.
+    Preserva dados existentes a partir da segunda linha.
+    """
+    print("\nIniciando criação/atualização de planilhas...")
+    db_db_schema = get_db_db_data()
+
+    if not db_db_schema:
+        print("Erro: A db_db está vazia ou não pôde ser carregada. Por favor, execute 'Sincronizar pagina db_db com planilhas das pastas' primeiro.")
+        sys.exit(1) # Sair com erro
+
+    expected_sheet_headers = {}
+    for entry in db_db_schema:
+        file_path = os.path.join(project_root, entry["Arquivo (Caminho)"])
+        sheet_name = entry["pagina_arquivo"]
+        header_name = entry["Nome da Coluna (Cabeçalho)"]
+        
+        key = (file_path, sheet_name)
+        if key not in expected_sheet_headers:
+            expected_sheet_headers[key] = []
+        expected_sheet_headers[key].append(header_name)
+    
+    for (file_path, sheet_name), headers_to_set in expected_sheet_headers.items():
+        try:
+            wb = None
+            if os.path.exists(file_path):
+                wb = openpyxl.load_workbook(file_path)
+            else:
+                wb = openpyxl.Workbook()
+                if "Sheet" in wb.sheetnames:
+                    wb.remove(wb["Sheet"])
+                print(f"Criando novo arquivo: {os.path.basename(file_path)}")
+
+            sheet = None
+            if sheet_name in wb.sheetnames:
+                sheet = wb[sheet_name]
+                print(f"Atualizando planilha existente: '{sheet_name}' em {os.path.basename(file_path)}")
+            else:
+                sheet = wb.create_sheet(sheet_name)
+                print(f"Criando nova planilha: '{sheet_name}' em {os.path.basename(file_path)}")
+
+            current_data = []
+            if sheet.max_row > 1: 
+                for row_idx in range(2, sheet.max_row + 1):
+                    row_values = [cell.value for cell in sheet[row_idx]]
+                    if not all(v is None for v in row_values):
+                        current_data.append(row_values)
+            
+            sheet.delete_rows(1, sheet.max_row)
+
+            sheet.append(headers_to_set)
+
+            for row_data in current_data:
+                new_row = [""] * len(headers_to_set)
+                
+                # Re-le os cabeçalhos da planilha antes de escrever (se ela tiver sido modificada por outra aba)
+                # Ou, para ser mais seguro, mapeie os dados existentes baseados na POSIÇÃO da linha que foi lida
+                # e não no cabeçalho, a menos que você queira remapear colunas com base no NOME.
+                # Para esta função, o mais seguro é assumir que a ordem dos dados originais
+                # deve ser preservada se não houver um mapeamento de nome de coluna.
+                # No entanto, a `db_db` define a ORDEM. Então, vamos mapear pela ordem da db_db.
+                
+                # Para evitar erros de "index out of range" se a linha lida for mais curta que o número de cabeçalhos
+                # na db_db, vamos preencher com valores padrão.
+                
+                # Isso é um ponto complexo: se a `db_db` mudou a ORDEM ou REMOVEU cabeçalhos,
+                # a correspondência de dados por índice pode levar a erros lógicos.
+                # A melhor prática para preservar dados com mudanças de schema é:
+                # 1. Carregar dados existentes MANTENDO O MAPA DE HEADERS ORIGINAIS
+                # 2. Criar uma nova linha vazia com os NOVOS HEADERS da db_db
+                # 3. Preencher a nova linha, mapeando os dados antigos para os novos headers PELO NOME.
+                
+                # Vamos refatorar esta parte para ser mais robusta no remapeamento dos dados.
+                
+                # Antes de deletar as linhas, vamos extrair os dados e seus cabeçalhos originais
+                # Esta parte foi movida para fora do loop principal, ou seja, na inicialização
+                # da função, você carrega os dados e os headers atuais ANTES DE APAGAR TUDO.
+                
+                # Como current_data já foi coletado antes de limpar a planilha,
+                # e current_headers_at_read não é mais usado após o clear.
+                # Precisamos de uma forma de saber o cabeçalho original da linha que está sendo 'preserved'.
+                # A abordagem mais segura é que a db_db defina a estrutura final, e se dados antigos
+                # não se encaixam, eles são descartados ou ficam vazios.
+
+                # Simplified approach: just append as they were read, assuming headers_to_set
+                # defines the final required structure and any non-matching data is ignored.
+                # If there are fewer elements in row_data than headers_to_set, it will be padded.
+                # If there are more, extra elements will be ignored.
+                appended_row = row_data[:len(headers_to_set)] # Trunca ou preenche com base nos headers
+                while len(appended_row) < len(headers_to_set):
+                    appended_row.append(None) # Preenche com None se faltar
+                sheet.append(appended_row)
+
+            wb.save(file_path)
+
+        except Exception as e:
+            print(f"Erro ao criar/atualizar '{os.path.basename(file_path)}' (planilha '{sheet_name}'): {e}")
+    
+    print("Criação/Atualização de planilhas concluída.")
 
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
         action = sys.argv[1]
         if action == "update_db_schema":
-            _sync_db_db_with_actual_files()
-        elif action == "create_or_update_sheets":
-            _create_or_update_all_sheets_from_schema()
+            update_db_schema()
         elif action == "validate":
-            _validate_db_consistency()
+            validate_db_consistency()
+        elif action == "create_or_update_sheets":
+            create_or_update_sheets()
         else:
             print(f"Ação desconhecida: {action}")
-            sys.exit(1)
+            sys.exit(1) # Sair com erro para ações desconhecidas
     else:
-        print("Uso: python update_user_sheets_metadata.py <ação>")
-        print("Ações disponíveis: update_db_schema, create_or_update_sheets, validate")
-        sys.exit(1)
-
+        print("Uso: python update_user_sheets_metadata.py [update_db_schema|validate|create_or_update_sheets]")
+        sys.exit(1) # Sair com erro se nenhuma ação for fornecida

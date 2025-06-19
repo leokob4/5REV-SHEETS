@@ -5,6 +5,7 @@ import openpyxl
 import json
 import subprocess
 import threading 
+import importlib 
 
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QToolBar, QAction, QTabWidget, QMenu, QToolButton,
@@ -17,16 +18,13 @@ from PyQt5.QtCore import Qt, QPointF, QFileInfo
 from PyQt5.QtGui import QBrush, QPen, QColor, QFont 
 
 # --- Correção para ModuleNotFoundError: No module named 'ui' ---
-# Obtém o caminho absoluto do diretório contendo gui.py
 current_dir = os.path.dirname(os.path.abspath(__file__))
-# Navega até a raiz do projeto (assumindo gui.py está em client/, e client/ está na raiz do projeto/)
-project_root = os.path.dirname(current_dir)
-# Adiciona a raiz do projeto ao sys.path para que Python possa encontrar 'ui' e 'app_sheets/tools' etc.
+project_root = os.path.abspath(os.path.join(current_dir, '..', '..'))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
 # --- Importar Módulos das Ferramentas ---
-# Garanta que esses arquivos existam em ui/tools/
+# Agora importamos SearchBarWidget e MiniConsoleWidget
 from ui.tools.product_data import ProductDataTool
 from ui.tools.bom_manager import BomManagerTool
 from ui.tools.configurador import ConfiguradorTool
@@ -46,44 +44,43 @@ from ui.tools.engenharia_workflow_tool import EngenhariaWorkflowTool
 from ui.tools.user_settings_tool import UserSettingsTool
 from app_sheets.tools.tools_line_generator import ToolsLineGeneratorTool 
 
+# NOVAS IMPORTAÇÕES DE WIDGETS MODULARIZADOS
+from ui.tools.search_bar import SearchBarWidget 
+from ui.tools.mini_console import MiniConsoleWidget
+
 # --- Configuração dos Caminhos dos Arquivos ---
 USER_SHEETS_DIR = os.path.join(project_root, "user_sheets")
 APP_SHEETS_DIR = os.path.join(project_root, "app_sheets")
 
-# Caminhos para arquivos Excel gerenciados pelo usuário (na pasta user_sheets)
 COLABORADORES_EXCEL_PATH = os.path.join(USER_SHEETS_DIR, "colaboradores.xlsx")
 CONFIGURADOR_EXCEL_PATH = os.path.join(USER_SHEETS_DIR, "configurador.xlsx")
 FINANCEIRO_EXCEL_PATH = os.path.join(USER_SHEETS_DIR, "financeiro.xlsx")
 MANUTENCAO_EXCEL_PATH = os.path.join(USER_SHEETS_DIR, "manutencao.xlsx")
-OUTPUT_EXCEL_PATH = os.path.join(USER_SHEETS_DIR, "output.xlsx") # Usado pela ProductDataTool
+OUTPUT_EXCEL_PATH = os.path.join(USER_SHEETS_DIR, "output.xlsx") 
 PEDIDOS_EXCEL_PATH = os.path.join(USER_SHEETS_DIR, "pedidos.xlsx")
-PROGRAMACAO_EXCEL_PATH = os.path.join(USER_SHEETS_DIR, "programacao.xlsx") # Usado pela PcpTool
+PROGRAMACAO_EXCEL_PATH = os.path.join(USER_SHEETS_DIR, "programacao.xlsx") 
 RPI_EXCEL_PATH = os.path.join(USER_SHEETS_DIR, "RPI.xlsx")
 ESTOQUE_EXCEL_PATH = os.path.join(USER_SHEETS_DIR, "estoque.xlsx") 
-DB_EXCEL_PATH = os.path.join(USER_SHEETS_DIR, "db.xlsx") # db.xlsx permanece em user_sheets
-WORKSPACE_DATA_EXCEL_PATH = os.path.join(USER_SHEETS_DIR, "workspace_data.xlsx") 
+DB_EXCEL_PATH = os.path.join(USER_SHEETS_DIR, "db.xlsx") 
+ENGENHARIA_EXCEL_PATH = os.path.join(USER_SHEETS_DIR, "engenharia.xlsx") 
 
-# Caminhos para arquivos Excel gerenciados pelo aplicativo (na pasta app_sheets)
-USERS_EXCEL_PATH = os.path.join(APP_SHEETS_DIR, "users.xlsx")
-ACCESS_EXCEL_PATH = os.path.join(APP_SHEETS_DIR, "access.xlsx") # Usado pelo frontend
-TOOLS_EXCEL_PATH = os.path.join(APP_SHEETS_DIR, "tools.xlsx") # Usado pelo frontend
-# Manter as referências aos arquivos usados pelo backend (main.py)
-MODULES_EXCEL_PATH = os.path.join(APP_SHEETS_DIR, "modules.xlsx") # Usado pelo backend
-PERMISSIONS_EXCEL_PATH = os.path.join(APP_SHEETS_DIR, "permissions.xlsx") # Usado pelo backend
-
-ENGENHARIA_EXCEL_PATH = os.path.join(USER_SHEETS_DIR, "engenharia.xlsx")
 BOM_DATA_EXCEL_PATH = os.path.join(USER_SHEETS_DIR, "bom_data.xlsx") 
 ITEMS_DATA_EXCEL_PATH = os.path.join(USER_SHEETS_DIR, "items_data.xlsx") 
 MANUFACTURING_DATA_EXCEL_PATH = os.path.join(USER_SHEETS_DIR, "manufacturing_data.xlsx")
-MAIN_EXCEL_PATH = os.path.join(APP_SHEETS_DIR, "main.xlsx") 
 
-# --- Caminhos para scripts externos ---
+USERS_EXCEL_PATH = os.path.join(APP_SHEETS_DIR, "users.xlsx")
+ACCESS_EXCEL_PATH = os.path.join(APP_SHEETS_DIR, "access.xlsx") 
+TOOLS_EXCEL_PATH = os.path.join(APP_SHEETS_DIR, "tools.xlsx") 
+MAIN_EXCEL_PATH = os.path.join(APP_SHEETS_DIR, "main.xlsx") 
+MODULES_EXCEL_PATH = os.path.join(APP_SHEETS_DIR, "modules.xlsx") 
+PERMISSIONS_EXCEL_PATH = os.path.join(APP_SHEETS_DIR, "permissions.xlsx") 
+
 UPDATE_METADATA_SCRIPT_PATH = os.path.join(APP_SHEETS_DIR, "tools", "update_user_sheets_metadata.py")
 SHEET_VALIDATOR_SCRIPT_PATH = os.path.join(APP_SHEETS_DIR, "tools", "sheet_validator_simple.py") 
 CREATE_ENGENHARIA_SCRIPT_PATH = os.path.join(APP_SHEETS_DIR, "tools", "create_engenharia_xlsx.py")
 TOOLS_LINE_GENERATOR_SCRIPT_PATH = os.path.join(APP_SHEETS_DIR, "tools", "tools_line_generator.py") 
 
-# Lista de arquivos protegidos (não podem ser excluídos ou renomeados via GUI)
+# Lista de arquivos protegidos (atualizada com os novos módulos)
 PROTECTED_FILES = [
     os.path.basename(COLABORADORES_EXCEL_PATH),
     os.path.basename(CONFIGURADOR_EXCEL_PATH),
@@ -95,13 +92,11 @@ PROTECTED_FILES = [
     os.path.basename(RPI_EXCEL_PATH),
     os.path.basename(ESTOQUE_EXCEL_PATH),
     os.path.basename(DB_EXCEL_PATH), 
-    os.path.basename(ENGENHARIA_EXCEL_PATH),
-    os.path.basename(BOM_DATA_EXCEL_PATH),
-    os.path.basename(ITEMS_DATA_EXCEL_PATH),
+    os.path.basename(ENGENHARIA_EXCEL_PATH), 
+    os.path.basename(BOM_DATA_EXCEL_PATH), 
+    os.path.basename(ITEMS_DATA_EXCEL_PATH), 
     os.path.basename(MANUFACTURING_DATA_EXCEL_PATH),
-    os.path.basename(WORKSPACE_DATA_EXCEL_PATH), 
     
-    # NOVOS ARQUIVOS PROTEGIDOS em app_sheets
     os.path.basename(USERS_EXCEL_PATH), 
     os.path.basename(ACCESS_EXCEL_PATH), 
     os.path.basename(TOOLS_EXCEL_PATH), 
@@ -109,11 +104,12 @@ PROTECTED_FILES = [
     os.path.basename(MODULES_EXCEL_PATH), 
     os.path.basename(PERMISSIONS_EXCEL_PATH), 
     
-    # Scripts protegidos
     os.path.basename(UPDATE_METADATA_SCRIPT_PATH),
     os.path.basename(SHEET_VALIDATOR_SCRIPT_PATH), 
     os.path.basename(CREATE_ENGENHARIA_SCRIPT_PATH),
-    os.path.basename(TOOLS_LINE_GENERATOR_SCRIPT_PATH) 
+    os.path.basename(TOOLS_LINE_GENERATOR_SCRIPT_PATH),
+    os.path.basename(os.path.join(project_root, 'ui', 'tools', 'search_bar.py')), # NOVO
+    os.path.basename(os.path.join(project_root, 'ui', 'tools', 'mini_console.py'))  # NOVO
 ]
 
 # Garante que os diretórios existam
@@ -123,6 +119,7 @@ os.makedirs(os.path.dirname(UPDATE_METADATA_SCRIPT_PATH), exist_ok=True)
 os.makedirs(os.path.dirname(CREATE_ENGENHARIA_SCRIPT_PATH), exist_ok=True) 
 os.makedirs(os.path.dirname(SHEET_VALIDATOR_SCRIPT_PATH), exist_ok=True) 
 os.makedirs(os.path.dirname(TOOLS_LINE_GENERATOR_SCRIPT_PATH), exist_ok=True) 
+os.makedirs(os.path.join(project_root, 'ui', 'tools'), exist_ok=True) # Garante que ui/tools existe
 
 
 # === FUNÇÕES AUXILIARES DE PLANILHA ===
@@ -234,12 +231,12 @@ def register_user(username, password, role="user"):
 def load_tools_from_excel_util():
     """
     Carrega dados da ferramenta do arquivo Excel dedicado às ferramentas (tools.xlsx).
-    Adaptado para os novos cabeçalhos: mod_id, mod_name, module_path, etc.
+    Adaptado para os novos cabeçalhos: mod_id, mod_name, module_path, class_name etc.
     """
     tools = {}
     try:
         if not os.path.exists(TOOLS_EXCEL_PATH):
-            QMessageBox.critical(None, "Arquivo Não Encontrado", f"O arquivo de ferramentas não foi encontrado em: {TOOLS_EXCEL_PATH}. Por favor, certifique-se de que ele exista.")
+            QMessageBox.critical(None, "Arquivo Não Encontrado", f"O arquivo de ferramentas não foi encontrado: {TOOLS_EXCEL_PATH}. Por favor, certifique-se de que ele exista.")
             return {}
 
         wb = openpyxl.load_workbook(TOOLS_EXCEL_PATH)
@@ -248,7 +245,7 @@ def load_tools_from_excel_util():
         headers = [cell.value for cell in sheet[1]] if sheet.max_row >= 1 else []
         header_map = {h: idx for idx, h in enumerate(headers)}
 
-        required_headers = ["mod_id", "mod_name", "module_path"] 
+        required_headers = ["mod_id", "mod_name", "module_path", "class_name"] 
         if not all(h in header_map for h in required_headers):
             QMessageBox.warning(None, "Cabeçalhos Ausentes", 
                                 f"A planilha 'tools' em {TOOLS_EXCEL_PATH} não possui todos os cabeçalhos esperados. "
@@ -265,15 +262,17 @@ def load_tools_from_excel_util():
             mod_name = row_values[header_map["mod_name"]] if "mod_name" in header_map and header_map["mod_name"] < len(row_values) and row_values[header_map["mod_name"]] is not None else None
             mod_description = row_values[header_map.get("mod_description")] if "mod_description" in header_map and header_map["mod_description"] < len(row_values) else None
             module_path = row_values[header_map["module_path"]] if "module_path" in header_map and header_map["module_path"] < len(row_values) and row_values[header_map["module_path"]] is not None else None
+            class_name = row_values[header_map["class_name"]] if "class_name" in header_map and header_map["class_name"] < len(row_values) and row_values[header_map["class_name"]] is not None else None 
             mod_work_table = row_values[header_map.get("MOD_WORK_TABLE")] if "MOD_WORK_TABLE" in header_map and header_map["MOD_WORK_TABLE"] < len(row_values) else None
             mod_work_table_path = row_values[header_map.get("MOD_WORK_TABLE_PATH")] if "MOD_WORK_TABLE_PATH" in header_map and header_map["MOD_WORK_TABLE_PATH"] < len(row_values) else None
 
-            if mod_id is not None and mod_name is not None and module_path is not None:
+            if mod_id is not None and mod_name is not None and (module_path is not None or class_name is not None): 
                 tools[str(mod_id)] = {
                     "id": str(mod_id),
                     "name": str(mod_name),
                     "description": str(mod_description) if mod_description is not None else "",
-                    "path": str(module_path), 
+                    "path": str(module_path) if module_path is not None else "", 
+                    "class_name": str(class_name) if class_name is not None else "", 
                     "mod_work_table": str(mod_work_table) if mod_work_table is not None else "",
                     "mod_work_table_path": str(mod_work_table_path) if mod_work_table_path is not None else ""
                 }
@@ -335,22 +334,23 @@ def load_role_permissions_util():
 
 def load_workspace_items_from_excel_util():
     """
-    Carrega os itens do espaço de trabalho do arquivo workspace_data.xlsx.
+    Carrega os itens do espaço de trabalho da planilha 'Estrutura' em engenharia.xlsx.
+    Mapeia 'part_number' para 'name' e 'part_type' para 'type'.
     """
     workspace_items = []
     try:
-        if not os.path.exists(WORKSPACE_DATA_EXCEL_PATH): 
+        if not os.path.exists(ENGENHARIA_EXCEL_PATH): 
             QMessageBox.warning(None, "Arquivo Não Encontrado", 
-                                f"O arquivo de itens do espaço de trabalho não foi encontrado: {WORKSPACE_DATA_EXCEL_PATH}\n"
-                                "Por favor, crie-o com uma planilha 'WorkspaceItems' e as colunas 'Name' e 'Type'.")
+                                f"O arquivo 'engenharia.xlsx' não foi encontrado: {ENGENHARIA_EXCEL_PATH}\n"
+                                "Por favor, crie-o com uma planilha 'Estrutura' e as colunas 'part_number' e 'part_type'.")
             return []
 
-        wb = openpyxl.load_workbook(WORKSPACE_DATA_EXCEL_PATH) 
-        sheet_name = "WorkspaceItems"
+        wb = openpyxl.load_workbook(ENGENHARIA_EXCEL_PATH) 
+        sheet_name = "Estrutura" 
         if sheet_name not in wb.sheetnames:
             QMessageBox.warning(None, "Planilha Ausente", 
-                                f"A planilha '{sheet_name}' não foi encontrada em {WORKSPACE_DATA_EXCEL_PATH}. "
-                                f"Por favor, certifique-se de que a planilha exista e tenha as colunas 'Name' e 'Type'.")
+                                f"A planilha '{sheet_name}' não foi encontrada em {ENGENHARIA_EXCEL_PATH}. "
+                                f"Por favor, certifique-se de que a planilha exista e tenha as colunas 'part_number' e 'part_type'.")
             return []
 
         sheet = wb[sheet_name]
@@ -358,10 +358,10 @@ def load_workspace_items_from_excel_util():
         headers = [cell.value for cell in sheet[1]] if sheet.max_row >= 1 else []
         header_map = {h: idx for idx, h in enumerate(headers)}
 
-        required_headers = ["Name", "Type"]
+        required_headers = ["part_number", "part_type"] 
         if not all(h in header_map for h in required_headers):
             QMessageBox.warning(None, "Cabeçalhos Ausentes", 
-                                f"A planilha '{sheet_name}' em {WORKSPACE_DATA_EXCEL_PATH} não possui todos os cabeçalhos esperados. "
+                                f"A planilha '{sheet_name}' em {ENGENHARIA_EXCEL_PATH} não possui todos os cabeçalhos esperados para o workspace. "
                                 f"Esperado: {', '.join(required_headers)}")
             return []
 
@@ -371,11 +371,11 @@ def load_workspace_items_from_excel_util():
             if all(v is None for v in row_values):
                 continue 
 
-            name = row_values[header_map["Name"]] if "Name" in header_map and header_map["Name"] < len(row_values) else None
-            item_type = row_values[header_map["Type"]] if "Type" in header_map and header_map["Type"] < len(row_values) else None
+            part_number = row_values[header_map["part_number"]] if "part_number" in header_map and header_map["part_number"] < len(row_values) else None
+            part_type = row_values[header_map["part_type"]] if "part_type" in header_map and header_map["part_type"] < len(row_values) else None
 
-            if name is not None and item_type is not None:
-                workspace_items.append({"name": str(name), "type": str(item_type)})
+            if part_number is not None and part_type is not None:
+                workspace_items.append({"name": str(part_number), "type": str(part_type)})
             else:
                 print(f"Aviso: Ignorando linha malformada na planilha '{sheet_name}' (linha {row_idx}): {row_values}")
 
@@ -467,18 +467,19 @@ class LoginWindow(QWidget):
             QMessageBox.critical(self, "Erro", f"Ocorreu um erro durante o registro: {e}")
 
 
-# === NOVA FERRAMENTA: ATUALIZADOR DE CABEÇALHOS DO BD (AGORA FUNCIONAL) ===
+# === FERRAMENTA GUI PARA VALIDADOR DE CABEÇALHOS DO DB ===
+# Esta classe é definida AQUI dentro de gui.py e não é importada de um arquivo externo
 class DbHeadersUpdaterTool(QWidget):
     """
     Ferramenta GUI para executar e exibir o resultado do validador de planilhas.
     Permite que o usuário visualize a saída do script 'sheet_validator_simple.py'
     diretamente na interface.
     """
-    def __init__(self, refresh_callback=None): # Adicionado refresh_callback
+    def __init__(self, refresh_callback=None): 
         super().__init__()
         self.setWindowTitle("Validador de Consistência de Planilhas")
-        self.script_path = SHEET_VALIDATOR_SCRIPT_PATH 
-        self.refresh_callback = refresh_callback # Armazena o callback
+        self.script_path = SHEET_VALIDATOR_SCRIPT_PATH # Caminho para o script externo do validador
+        self.refresh_callback = refresh_callback 
         self._init_ui()
 
     def _init_ui(self):
@@ -486,9 +487,13 @@ class DbHeadersUpdaterTool(QWidget):
         layout = QVBoxLayout()
 
         description_label = QLabel(
-            "Esta ferramenta executa o script de validação de consistência das planilhas.\n"
-            "Ele compara os cabeçalhos das planilhas com o esquema registrado em 'db.xlsx'."
+            "Esta ferramenta executa o script 'sheet_validator_simple.py', que compara a estrutura real dos "
+            "cabeçalhos de todas as planilhas do sistema com o esquema registrado na 'db_db' em 'db.xlsx'.\n\n"
+            "Resultados esperados:\n"
+            "- Sucesso: Mensagem indicando que não foram encontradas inconsistências.\n"
+            "- Erro: Detalhes de quais planilhas e cabeçalhos estão inconsistentes com a 'db_db'."
         )
+        description_label.setWordWrap(True) 
         layout.addWidget(description_label)
 
         self.run_button = QPushButton("Executar Validação")
@@ -497,7 +502,7 @@ class DbHeadersUpdaterTool(QWidget):
 
         self.output_text = QTextEdit()
         self.output_text.setReadOnly(True)
-        self.output_text.setPlaceholderText("Aguardando execução da validação... Clique em 'Executar Validação' para iniciar.")
+        self.output_text.setPlaceholderText("Aguardando execução da validação... Clique em 'Executar Validação' para iniciar. A saída detalhada do script aparecerá aqui.")
         layout.addWidget(self.output_text)
 
         self.setLayout(layout)
@@ -533,10 +538,11 @@ class DbHeadersUpdaterTool(QWidget):
 
             if process.returncode == 0:
                 self.output_text.append("\n--- Validação Concluída com Sucesso ---")
-                if self.refresh_callback: # Chama o callback para atualizar a GUI se fornecido
+                if self.refresh_callback: 
                     self.refresh_callback()
             else:
                 self.output_text.append(f"\n--- Validação Concluída com Erros (Código: {process.returncode}) ---")
+                self.output_text.append("\nPor favor, revise a saída acima para identificar as inconsistências.")
                 
         except FileNotFoundError:
             self.output_text.append(f"ERRO: O executável Python ou o script '{os.path.basename(self.script_path)}' não foi encontrado. Verifique o PATH ou o caminho do script.")
@@ -553,13 +559,12 @@ class TeamcenterStyleGUI(QMainWindow):
         self.user_data = user_data
         self.current_user_role = user_data["role"]
 
-        # Atributos para armazenar dados de configuração carregados
         self.users = {}
         self.access_permissions = {}
         self.available_tools_metadata = {}
         self.workspace_items = []
 
-        self._load_all_configuration_data() # Carrega todos os dados na inicialização
+        self._load_all_configuration_data() 
 
         self.setWindowTitle("5revolution ERP")
         self.setGeometry(100, 100, 1200, 800) 
@@ -576,9 +581,15 @@ class TeamcenterStyleGUI(QMainWindow):
     def _refresh_gui_data(self):
         """Recarrega os dados de configuração e atualiza os componentes da GUI."""
         self._load_all_configuration_data()
-        self._populate_tools_menu(self.findChild(QToolButton, "tools_menu_btn").menu()) # Repopula o menu de ferramentas
-        self._populate_workspace_tree() # Repopula a árvore do espaço de trabalho
-        self._populate_file_system_tree() # Repopula a árvore do sistema de arquivos
+        tools_menu_btn = self.findChild(QToolButton, "tools_menu_btn")
+        if tools_menu_btn:
+            self._populate_tools_menu(tools_menu_btn.menu()) 
+        self._populate_workspace_tree() 
+        self._populate_file_system_tree() 
+        # Garante que a barra de pesquisa e o console também sejam reinicializados se necessário
+        self.search_bar_widget.clear_search() # Limpa a busca
+        self.mini_console_widget.clear_output() # Limpa o console
+        self.mini_console_widget.append_output("GUI recarregada. Console limpo.")
         print("GUI atualizada com novos dados de configuração.")
 
 
@@ -606,7 +617,7 @@ class TeamcenterStyleGUI(QMainWindow):
 
         # Menu Ferramentas (dinâmico com base nas permissões)
         tools_menu_btn = QToolButton(self)
-        tools_menu_btn.setObjectName("tools_menu_btn") # Adiciona um nome de objeto para encontrar mais tarde
+        tools_menu_btn.setObjectName("tools_menu_btn") 
         tools_menu_btn.setText("Ferramentas")
         tools_menu_btn.setPopupMode(QToolButton.InstantPopup)
         tools_menu = QMenu(self)
@@ -632,28 +643,38 @@ class TeamcenterStyleGUI(QMainWindow):
             admin_menu_btn.setPopupMode(QToolButton.InstantPopup)
             admin_menu = QMenu(self)
             
-            # Ação para criar/reinicializar/atualizar planilhas (texto personalizado)
             create_update_sheets_action = QAction("Criar/Reinicializar/atualizar planilhas", self)
-            create_update_sheets_action.setToolTip("Cria ou reinicializa os arquivos '.xlsx' na pasta 'user_sheets' com as estruturas em db_db. sem perda de dados das demais linhas>1(linhas maior que 1 do cabeçalho utilizadas no app)")
+            create_update_sheets_action.setToolTip(
+                "Executa o script 'update_user_sheets_metadata.py' com a ação 'create_or_update_sheets'.\n"
+                "Função: Cria novas planilhas ou atualiza as existentes com os cabeçalhos definidos na 'db_db' em 'db.xlsx'.\n"
+                "Importante: Preserva os dados existentes a partir da segunda linha (dados do app), apenas ajustando a estrutura de cabeçalhos e excluindo linhas totalmente vazias abaixo da 2ª linha."
+            )
             create_update_sheets_action.triggered.connect(self._run_create_or_update_all_sheets) 
             admin_menu.addAction(create_update_sheets_action)
 
-            # Ação para sincronizar o esquema do banco de dados (db_db) (texto personalizado)
-            sync_db_schema_action = QAction("Sincronizar pagina db_db com planilhas das pastas", self)
-            sync_db_schema_action.setToolTip("Coleta os cabeçalhos de todas as planilhas do projeto (user_sheets e app_sheets, exceto o próprio db.xlsx) e os registra na planilha 'db_db' em 'db.xlsx'. Esta ação reconstrói o dicionário de dados do sistema, que é a base para a validação de consistência.")
+            sync_db_schema_action = QAction("Sincronizar 'db_db' com Estrutura Real das Planilhas", self)
+            sync_db_schema_action.setToolTip(
+                "Executa o script 'update_user_sheets_metadata.py' com a ação 'update_db_schema'.\n"
+                "Função: Coleta os cabeçalhos de *todas* as planilhas Excel do projeto (em 'user_sheets' e 'app_sheets', excluindo o próprio 'db.xlsx').\n"
+                "Resultado: Registra essa estrutura real na planilha 'db_db' em 'db.xlsx', servindo como a 'fonte da verdade' para validações futuras."
+            )
             sync_db_schema_action.triggered.connect(self._run_sync_db_db_schema) 
             admin_menu.addAction(sync_db_schema_action)
 
-            # Ação para validar consistência do DB (texto personalizado)
-            validate_db_consistency_action = QAction("Verifica planilhas retornando diferenças com db_db", self)
-            validate_db_consistency_action.setToolTip("Compara a estrutura real dos cabeçalhos das planilhas do projeto com o esquema registrado na planilha 'db_db' em 'db.xlsx', identificando inconsistências e erros.")
-            validate_db_consistency_action.triggered.connect(self._run_validate_db_consistency)
+            validate_db_consistency_action = QAction("Abrir Validador de Consistência de Planilhas (GUI)", self)
+            validate_db_consistency_action.setToolTip(
+                "Abre uma interface gráfica dedicada para executar o 'sheet_validator_simple.py'.\n"
+                "Função: Compara os cabeçalhos de todas as planilhas do projeto com o esquema registrado na 'db_db' em 'db.xlsx'.\n"
+                "Saída: Mostra detalhadamente na interface quais planilhas e cabeçalhos apresentam inconsistências, ou uma mensagem de sucesso."
+            )
+            validate_db_consistency_action.triggered.connect(lambda: self._open_tool("MOD000018", refresh_callback=self._refresh_gui_data)) 
             admin_menu.addAction(validate_db_consistency_action)
 
-            # NOVO: Ação para o Gerador de Linha de Ferramentas
             generate_tool_line_action = QAction("Adicionar Nova Ferramenta ao Sistema", self)
-            generate_tool_line_action.setToolTip("Abre uma ferramenta para adicionar novas entradas de módulo/ferramenta na planilha tools.xlsx.")
-            # Passa o callback de refresh para a ferramenta
+            generate_tool_line_action.setToolTip(
+                "Abre uma interface gráfica para adicionar novas entradas de módulo/ferramenta na planilha 'tools.xlsx'.\n"
+                "Função: Facilita o registro de novas ferramentas no sistema, gerando automaticamente um 'mod_id' sequencial e coletando informações essenciais."
+            )
             generate_tool_line_action.triggered.connect(lambda: self._open_tool("MOD000019", refresh_callback=self._refresh_gui_data)) 
             admin_menu.addAction(generate_tool_line_action)
 
@@ -667,7 +688,7 @@ class TeamcenterStyleGUI(QMainWindow):
         Popula o menu de ferramentas com base nas permissões do usuário e nos metadados das ferramentas.
         Utiliza 'allowed_tools' do access.xlsx diretamente.
         """
-        menu.clear() # Limpa o menu antes de repopular
+        menu.clear() 
         user_allowed_tools_list = self.access_permissions.get(self.current_user_role, [])
         
         allowed_tool_ids_for_user = set()
@@ -677,102 +698,108 @@ class TeamcenterStyleGUI(QMainWindow):
             allowed_tool_ids_for_user = set(user_allowed_tools_list)
             
         for tool_id, tool_info in self.available_tools_metadata.items():
-            if tool_id in ["MOD000019", "MOD000018"]:
+            if tool_id in ["MOD000019", "MOD000018"]: 
                 continue 
             
             if tool_id in allowed_tool_ids_for_user:
                 action = QAction(tool_info["name"], self)
-                # Passa o callback de refresh para as ferramentas se elas precisarem
                 action.triggered.connect(lambda checked, t_id=tool_id: self._open_tool(t_id, refresh_callback=self._refresh_gui_data))
                 menu.addAction(action)
 
     def _open_tool(self, tool_id, refresh_callback=None):
-        """Abre a ferramenta selecionada em uma nova aba."""
+        """
+        Abre a ferramenta selecionada em uma nova aba, carregando a classe dinamicamente de tools.xlsx.
+        """
         tool_info = self.available_tools_metadata.get(tool_id)
         
-        tool_name = tool_info["name"] if tool_info and "name" in tool_info else f"Ferramenta desconhecida (ID: {tool_id})"
-        
-        tool_classes = {
-            "MOD000001": ProductDataTool,
-            "MOD000002": BomManagerTool,
-            "MOD000003": ConfiguradorTool,
-            "MOD000004": ColaboradoresTool,
-            "MOD000005": ItemsTool,
-            "MOD000006": ManufacturingTool,
-            "MOD000007": PcpTool,
-            "MOD000008": EstoqueTool,
-            "MOD000009": FinanceiroTool,
-            "MOD000010": PedidosTool,
-            "MOD000011": ManutencaoTool,
-            "MOD000012": EngenhariaDataTool, 
-            "MOD000013": EngenhariaWorkflowTool, 
-            "MOD000014": UserSettingsTool, 
-            "MOD000015": ExcelViewerTool, 
-            "MOD000016": StructureViewTool, 
-            "MOD000017": RpiTool, 
-            "MOD000018": DbHeadersUpdaterTool, 
-            "MOD000019": ToolsLineGeneratorTool, 
-            
-            # IDs antigos para compatibilidade
-            "mod4": EngenhariaDataTool, 
-            "mes_pcp": PcpTool, 
-            "prod_data": ProductDataTool, 
-            "bom_manager": BomManagerTool, 
-            "configurador": ConfiguradorTool, 
-            "colab": ColaboradoresTool, 
-            "items_tool": ItemsTool, 
-            "manuf": ManufacturingTool, 
-            "pcp_tool": PcpTool, 
-            "estoque_tool": EstoqueTool, 
-            "financeiro": FinanceiroTool, 
-            "pedidos": PedidosTool, 
-            "manutencao": ManutencaoTool, 
-            "mod_user_settings": UserSettingsTool, 
-            "mod_workflow": EngenhariaWorkflowTool, 
-            "mod_excel_viewer": ExcelViewerTool, 
-            "mod_structure_view": StructureViewTool, 
-            "mod_rpi_control": RpiTool, 
-        }
+        if not tool_info:
+            QMessageBox.warning(self, "Ferramenta Não Encontrada", f"Metadados para a ferramenta com ID '{tool_id}' não encontrados em tools.xlsx.")
+            return
 
-        ToolClass = tool_classes.get(tool_id)
-        if ToolClass:
-            try:
-                tool_instance = None
-                
-                if tool_id == "MOD000019": 
-                    tool_instance = ToolClass(refresh_callback=refresh_callback) # Passa o callback
-                elif tool_id == "MOD000018": 
-                    tool_instance = ToolClass(refresh_callback=refresh_callback) # Passa o callback
-                elif tool_id == "MOD000014" or tool_id == "mod_user_settings": 
-                    tool_instance = ToolClass(self.user_data) 
-                elif tool_id == "MOD000012" or tool_id == "mod4": 
-                    tool_instance = ToolClass(file_path=ENGENHARIA_EXCEL_PATH, sheet_name="Estrutura")
-                elif tool_id == "MOD000013" or tool_id == "mod_workflow": 
-                    tool_instance = ToolClass(file_path=ENGENHARIA_EXCEL_PATH, sheet_name="Workflows")
-                elif tool_id == "MOD000015" or tool_id == "mod_excel_viewer": 
-                     tool_instance = ToolClass(file_path=None) 
-                else:
-                    work_table_path = tool_info.get("mod_work_table_path") if tool_info else None
-                    if work_table_path:
-                        full_work_table_path = os.path.normpath(os.path.join(project_root, work_table_path.strip('/\\')))
-                        if os.path.exists(full_work_table_path):
-                            tool_instance = ToolClass(file_path=full_work_table_path)
-                        else:
-                            QMessageBox.warning(self, "Caminho Inválido", f"O arquivo de trabalho para '{tool_name}' não foi encontrado: {full_work_table_path}")
-                            return
-                    else:
-                        tool_instance = ToolClass() 
+        tool_name = tool_info["name"]
+        module_path = tool_info["path"] 
+        class_name = tool_info["class_name"] 
 
-                if tool_instance:
-                    self.central_widget.addTab(tool_instance, tool_name)
-                    self.central_widget.setCurrentWidget(tool_instance)
-                else:
-                    QMessageBox.warning(self, "Erro de Instanciação", f"Não foi possível criar uma instância para a ferramenta '{tool_name}'.")
-
-            except Exception as e:
-                QMessageBox.critical(self, "Erro ao Abrir Ferramenta", f"Não foi possível abrir a ferramenta '{tool_name}': {e}")
+        ToolClass = None # Inicializa ToolClass
+        # Casos especiais que não dependem diretamente de module_path + class_name de tools.xlsx
+        if tool_id == "MOD000019": # ToolsLineGeneratorTool (app_sheets.tools.tools_line_generator)
+            ToolClass = ToolsLineGeneratorTool
+        elif tool_id == "MOD000018": # DbHeadersUpdaterTool (classe interna do gui.py)
+            ToolClass = DbHeadersUpdaterTool
         else:
-            QMessageBox.warning(self, "Ferramenta Não Implementada", f"A ferramenta '{tool_name}' (ID: {tool_id}) ainda não tem uma classe associada ou não está implementada.")
+            # Importação dinâmica da classe da ferramenta
+            try:
+                # Adiciona o diretório base ao sys.path temporariamente se não for um módulo de nível superior
+                if module_path.startswith("ui.tools"):
+                    base_module_dir = os.path.join(project_root, "ui")
+                elif module_path.startswith("app_sheets.tools"):
+                    base_module_dir = os.path.join(project_root, "app_sheets")
+                else:
+                    base_module_dir = project_root # Default
+
+                if base_module_dir not in sys.path:
+                    sys.path.insert(0, base_module_dir) # Garante que o diretório base do módulo esteja no sys.path
+                    
+                module = importlib.import_module(module_path)
+                ToolClass = getattr(module, class_name)
+            except ImportError as e:
+                QMessageBox.critical(self, "Erro de Importação", 
+                                     f"Não foi possível importar o módulo '{module_path}' para a ferramenta '{tool_name}'. Verifique 'module_path' em tools.xlsx e a existência do arquivo. Erro: {e}")
+                print(f"Erro: Não foi possível importar o módulo '{module_path}'. Verifique o module_path em tools.xlsx e a existência do arquivo. Erro: {e}")
+                return
+            except AttributeError as e:
+                QMessageBox.critical(self, "Erro de Classe", 
+                                     f"A classe '{class_name}' não foi encontrada no módulo '{module_path}' para a ferramenta '{tool_name}'. Verifique 'class_name' em tools.xlsx. Erro: {e}")
+                print(f"Erro: A classe '{class_name}' não foi encontrada no módulo '{module_path}'. Verifique o class_name em tools.xlsx. Erro: {e}")
+                return
+            except Exception as e:
+                QMessageBox.critical(self, "Erro Inesperado", f"Ocorreu um erro inesperado ao carregar a ferramenta '{tool_name}': {e}")
+                print(f"Erro inesperado ao carregar ferramenta: {e}")
+                import traceback
+                traceback.print_exc()
+                return
+
+        # Tenta instanciar a ferramenta com os parâmetros corretos
+        tool_instance = None
+        try:
+            if tool_id in ["MOD000019", "MOD000018"]: 
+                tool_instance = ToolClass(refresh_callback=refresh_callback)
+            elif tool_id == "MOD000014" or tool_id == "mod_user_settings": 
+                tool_instance = ToolClass(self.user_data) 
+            elif tool_id == "MOD000012" or tool_id == "mod4": 
+                tool_instance = ToolClass(file_path=ENGENHARIA_EXCEL_PATH, sheet_name="Estrutura")
+            elif tool_id == "MOD000013" or tool_id == "mod_workflow": 
+                tool_instance = ToolClass(file_path=ENGENHARIA_EXCEL_PATH, sheet_name="Workflows")
+            elif tool_id == "MOD000015" or tool_id == "mod_excel_viewer": 
+                 tool_instance = ToolClass(file_path=None) 
+            else:
+                work_table_path = tool_info.get("mod_work_table_path")
+                if work_table_path:
+                    full_work_table_path = os.path.normpath(os.path.join(project_root, work_table_path.strip('/\\')))
+                    if os.path.exists(full_work_table_path):
+                        tool_instance = ToolClass(file_path=full_work_table_path)
+                    else:
+                        QMessageBox.warning(self, "Caminho Inválido", f"O arquivo de trabalho para '{tool_name}' não foi encontrado: {full_work_table_path}")
+                        return
+                else:
+                    tool_instance = ToolClass()
+
+            if tool_instance:
+                for i in range(self.central_widget.count()):
+                    if self.central_widget.tabText(i) == tool_name:
+                        self.central_widget.setCurrentIndex(i)
+                        return
+
+                self.central_widget.addTab(tool_instance, tool_name)
+                self.central_widget.setCurrentWidget(tool_instance)
+            else:
+                QMessageBox.warning(self, "Erro de Instanciação", f"Não foi possível criar uma instância para a ferramenta '{tool_name}'. Verifique o construtor da classe ou os parâmetros necessários.")
+
+        except Exception as e:
+            QMessageBox.critical(self, "Erro ao Abrir Ferramenta", f"Não foi possível abrir a ferramenta '{tool_name}': {e}")
+            print(f"Detalhes do erro ao abrir a ferramenta '{tool_name}': {e}")
+            import traceback
+            traceback.print_exc()
 
 
     def _create_main_layout(self):
@@ -780,15 +807,44 @@ class TeamcenterStyleGUI(QMainWindow):
         main_splitter = QSplitter(Qt.Horizontal)
         self.setCentralWidget(main_splitter)
 
-        # Painel Esquerdo (Árvore de Navegação)
-        left_panel = QWidget()
-        left_layout = QVBoxLayout(left_panel)
-        self.tree_widget = QTreeWidget()
+        # Painel Esquerdo (Árvore de Navegação e Console)
+        left_panel_container = QWidget()
+        left_panel_layout = QVBoxLayout(left_panel_container)
+        left_panel_layout.setContentsMargins(0,0,0,0) # Remove margens do layout
+
+        # Splitter para a Árvore de Navegação e o Console
+        left_splitter = QSplitter(Qt.Vertical)
+
+        # Widget para a Árvore de Navegação
+        tree_view_widget = QWidget()
+        tree_view_layout = QVBoxLayout(tree_view_widget)
+        tree_view_layout.setContentsMargins(0,0,0,0)
+        tree_view_layout.addWidget(QLabel("<h2>Espaço de Trabalho</h2>"))
+
+        # Instancia e adiciona a barra de pesquisa
+        self.tree_widget = QTreeWidget() # Instancia aqui para passar para o SearchBarWidget
         self.tree_widget.setHeaderLabels(["Nome", "Tipo"]) 
         self.tree_widget.itemDoubleClicked.connect(self._on_tree_item_double_clicked)
-        left_layout.addWidget(QLabel("<h2>Espaço de Trabalho</h2>"))
-        left_layout.addWidget(self.tree_widget)
-        main_splitter.addWidget(left_panel)
+        
+        self.search_bar_widget = SearchBarWidget(self.tree_widget)
+        tree_view_layout.addWidget(self.search_bar_widget)
+        tree_view_layout.addWidget(self.tree_widget)
+        
+        left_splitter.addWidget(tree_view_widget)
+
+        # Instancia e adiciona o mini-console
+        self.mini_console_widget = MiniConsoleWidget()
+        # Opcional: conectar o sinal de comando para uma função no GUI principal
+        self.mini_console_widget.command_entered.connect(self._handle_console_command)
+        left_splitter.addWidget(self.mini_console_widget)
+
+        # Define tamanhos iniciais para o splitter esquerdo (árvore e console)
+        # Ex: 70% para a árvore, 30% para o console
+        left_splitter.setSizes([self.height() * 0.7, self.height() * 0.3])
+
+        left_panel_layout.addWidget(left_splitter)
+        main_splitter.addWidget(left_panel_container)
+
 
         # Painel Direito (Abas de Trabalho)
         self.central_widget = QTabWidget()
@@ -796,7 +852,7 @@ class TeamcenterStyleGUI(QMainWindow):
         self.central_widget.tabCloseRequested.connect(self.central_widget.removeTab)
         main_splitter.addWidget(self.central_widget)
 
-        # Define o tamanho inicial dos painéis
+        # Define o tamanho inicial dos painéis principais
         main_splitter.setSizes([300, 900]) 
 
     def _setup_initial_content(self):
@@ -805,22 +861,32 @@ class TeamcenterStyleGUI(QMainWindow):
         self._populate_file_system_tree()
 
     def _populate_workspace_tree(self):
-        """Popula a seção 'Espaço de Trabalho' da árvore lendo de workspace_data.xlsx."""
-        self.tree_widget.clear() 
+        """Popula a seção 'Espaço de Trabalho' da árvore lendo de engenharia.xlsx."""
+        workspace_root_item = None
+        for i in range(self.tree_widget.topLevelItemCount()):
+            item = self.tree_widget.topLevelItem(i)
+            if item.text(0) == "Projetos/Espaço de Trabalho":
+                workspace_root_item = item
+                break
         
-        workspace_root_item = QTreeWidgetItem(self.tree_widget, ["Projetos/Espaço de Trabalho", "Pasta"])
+        if workspace_root_item:
+            while workspace_root_item.childCount() > 0:
+                workspace_root_item.removeChild(workspace_root_item.child(0))
+        else:
+            workspace_root_item = QTreeWidgetItem(self.tree_widget, ["Projetos/Espaço de Trabalho", "Pasta"])
+            self.tree_widget.addTopLevelItem(workspace_root_item) 
+        
         workspace_root_item.setExpanded(True) 
         
-        # Usa os dados já carregados
-        for item_data in self.workspace_items:
-            QTreeWidgetItem(workspace_root_item, [item_data["name"], item_data["type"]])
+        for item_data in self.workspace_items: 
+            new_item = QTreeWidgetItem(workspace_root_item, [item_data["name"], item_data["type"]])
+            new_item.setHidden(False) 
+            
+        self._sort_top_level_items()
+
 
     def _populate_file_system_tree(self):
         """Popula as seções 'Arquivos do Usuário' e 'Arquivos do Sistema' da árvore."""
-        # Remove os itens de arquivos existentes para repopular
-        # Note: Isso pode ser refinado para atualizar apenas os itens modificados,
-        # mas para simplicidade, limpamos e repopulamos.
-        # Encontra os itens raiz existentes para user_sheets e app_sheets e os remove
         root_items_to_remove = []
         for i in range(self.tree_widget.topLevelItemCount()):
             item = self.tree_widget.topLevelItem(i)
@@ -830,7 +896,6 @@ class TeamcenterStyleGUI(QMainWindow):
         for item in root_items_to_remove:
             self.tree_widget.takeTopLevelItem(self.tree_widget.indexOfTopLevelItem(item))
 
-        # Adiciona os itens raiz novamente
         user_files_root = QTreeWidgetItem(self.tree_widget, ["Arquivos do Usuário (user_sheets)", "Pasta"])
         user_files_root.setExpanded(True)
         app_files_root = QTreeWidgetItem(self.tree_widget, ["Arquivos do Sistema (app_sheets)", "Pasta"])
@@ -838,13 +903,43 @@ class TeamcenterStyleGUI(QMainWindow):
 
         self._add_files_to_tree(USER_SHEETS_DIR, user_files_root)
         self._add_files_to_tree(APP_SHEETS_DIR, app_files_root)
+        
+        self._sort_top_level_items()
+
+    def _sort_top_level_items(self):
+        """Garante que os itens de nível superior da árvore estejam em uma ordem consistente."""
+        top_level_items = []
+        for i in range(self.tree_widget.topLevelItemCount()):
+            top_level_items.append(self.tree_widget.topLevelItem(i))
+        
+        order = {
+            "Projetos/Espaço de Trabalho": 0,
+            "Arquivos do Usuário (user_sheets)": 1,
+            "Arquivos do Sistema (app_sheets)": 2
+        }
+        
+        top_level_items.sort(key=lambda item: order.get(item.text(0), 99))
+        
+        self.tree_widget.clear() 
+        for item in top_level_items:
+            self.tree_widget.addTopLevelItem(item)
 
     def _add_files_to_tree(self, directory, parent_item):
-        """Adiciona arquivos .xlsx de um diretório à árvore."""
+        """Adiciona arquivos .xlsx e subdiretórios de um diretório à árvore."""
         try:
             for filename in os.listdir(directory):
-                if filename.endswith(".xlsx") and not filename.startswith('~$'): 
-                    file_path = os.path.join(directory, filename)
+                if filename.startswith('~$'): 
+                    continue
+
+                if os.path.basename(directory) == "user_sheets" and filename.lower() == "db.xlsx":
+                    continue
+                
+                file_path = os.path.join(directory, filename)
+                if os.path.isdir(file_path):
+                    folder_item = QTreeWidgetItem(parent_item, [filename, "Pasta"])
+                    folder_item.setExpanded(True)
+                    self._add_files_to_tree(file_path, folder_item) 
+                elif filename.endswith(".xlsx"): 
                     file_info = QFileInfo(file_path)
                     item = QTreeWidgetItem(parent_item, [file_info.fileName(), "Arquivo Excel"])
                     item.setData(0, Qt.UserRole, file_path) 
@@ -877,35 +972,75 @@ class TeamcenterStyleGUI(QMainWindow):
         except Exception as e:
             QMessageBox.critical(self, "Erro ao Abrir Arquivo", f"Não foi possível abrir '{os.path.basename(file_path)}' no visualizador: {e}")
             
-    # --- NOVAS FUNÇÕES PARA EXECUTAR SCRIPTS EXTERNOS (USADAS PELO MENU ADMIN) ---
+    # --- FUNÇÕES DO MINI-CONSOLE ---
+    def _handle_console_command(self, command: str):
+        """
+        Processa comandos recebidos do mini-console.
+        Aqui você pode adicionar lógica para interpretar e executar comandos.
+        Por enquanto, apenas ecoa a entrada.
+        """
+        self.mini_console_widget.append_output(f"Comando recebido: '{command}' (Lógica de execução a ser implementada)")
+        # Exemplo: Se você quisesse executar código Python diretamente (CUIDADO com segurança!)
+        # try:
+        #     exec(command, globals(), locals())
+        # except Exception as e:
+        #     self.mini_console_widget.append_output(f"Erro ao executar: {e}")
+
+    # --- FUNÇÕES PARA EXECUTAR SCRIPTS EXTERNOS (USADAS PELO MENU ADMIN) ---
     def _run_external_python_script(self, script_path, action, *args):
         """
         Executa um script Python externo em um processo separado com uma ação específica.
-        Exibe uma caixa de mensagem com o resultado.
+        Exibe uma caixa de mensagem com o resultado e envia a saída para o mini-console.
         """
         cmd = [sys.executable, script_path, action] + list(args)
         
-        try:
-            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-            output = result.stdout.strip()
-            error = result.stderr.strip()
+        self.mini_console_widget.append_output(f"Executando script: {os.path.basename(script_path)} {action}...")
+        self.mini_console_widget.append_output("Aguarde a saída...")
 
-            if result.returncode == 0:
-                QMessageBox.information(self, "Sucesso na Execução do Script", f"Script executado com sucesso:\n\n{output}")
-                print(f"Sucesso: {output}")
-                self._refresh_gui_data() # Atualiza a GUI após sucesso
+        try:
+            process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, bufsize=1)
+            
+            def read_stream(stream, is_stderr=False):
+                for line in stream:
+                    output_line = f"ERRO SCRIPT: {line.strip()}" if is_stderr else line.strip()
+                    self.mini_console_widget.append_output(output_line)
+                    QApplication.processEvents() 
+
+            stdout_thread = threading.Thread(target=read_stream, args=(process.stdout,))
+            stderr_thread = threading.Thread(target=read_stream, args=(process.stderr, True))
+
+            stdout_thread.start()
+            stderr_thread.start()
+
+            stdout_thread.join() 
+            stderr_thread.join()
+
+            process.wait() 
+
+            if process.returncode == 0:
+                self.mini_console_widget.append_output(f"\n--- Script '{os.path.basename(script_path)}' Concluído com Sucesso ---")
+                QMessageBox.information(self, "Sucesso na Execução do Script", f"Script '{os.path.basename(script_path)}' executado com sucesso.")
+                self._refresh_gui_data() 
             else:
-                QMessageBox.critical(self, "Erro na Execução do Script", f"O script retornou um erro (Código: {result.returncode}):\n\n{error}\n{output}")
-                print(f"Erro: {error}\nOutput: {output}")
+                self.mini_console_widget.append_output(f"\n--- Script '{os.path.basename(script_path)}' Concluído com Erros (Código: {process.returncode}) ---")
+                self.mini_console_widget.append_output("Por favor, revise a saída do console para detalhes.")
+                QMessageBox.critical(self, "Erro na Execução do Script", f"O script '{os.path.basename(script_path)}' retornou um erro. Veja o console para detalhes.")
+                
         except FileNotFoundError:
-            QMessageBox.critical(self, "Erro de Arquivo", f"O executável Python ou o script '{os.path.basename(script_path)}' não foi encontrado. Verifique o PATH ou o caminho do script.")
-            print(f"Erro: Python executable or script '{script_path}' not found.")
+            err_msg = f"ERRO: O executável Python ou o script '{os.path.basename(script_path)}' não foi encontrado. Verifique o PATH ou o caminho do script."
+            self.mini_console_widget.append_output(err_msg)
+            QMessageBox.critical(self, "Erro de Arquivo", err_msg)
         except subprocess.CalledProcessError as e:
-            QMessageBox.critical(self, "Erro no Processo", f"O script '{os.path.basename(script_path)}' falhou:\n\n{e.stdout}\n{e.stderr}")
-            print(f"Erro no processo: {e.stdout}\n{e.stderr}")
+            err_msg = f"ERRO no Processo para '{os.path.basename(script_path)}':\nstdout: {e.stdout}\nstderr: {e.stderr}"
+            self.mini_console_widget.append_output(err_msg)
+            QMessageBox.critical(self, "Erro no Processo", err_msg)
         except Exception as e:
-            QMessageBox.critical(self, "Erro Inesperado", f"Ocorreu um erro inesperado ao tentar executar o script '{os.path.basename(script_path)}': {e}")
-            print(f"Erro inesperado ao executar script: {e}")
+            err_msg = f"ERRO Inesperado ao tentar executar o script '{os.path.basename(script_path)}': {e}"
+            self.mini_console_widget.append_output(err_msg)
+            QMessageBox.critical(self, "Erro Inesperado", err_msg)
+        finally:
+            self.mini_console_widget.append_output("\n--- Execução de script finalizada ---")
+
 
     def _run_create_or_update_all_sheets(self):
         """Executa o script para criar/atualizar todas as planilhas definidas no db_db."""
@@ -913,7 +1048,6 @@ class TeamcenterStyleGUI(QMainWindow):
             QMessageBox.critical(self, "Erro", f"O script de atualização de metadados não foi encontrado em: {UPDATE_METADATA_SCRIPT_PATH}")
             return
         self._run_external_python_script(UPDATE_METADATA_SCRIPT_PATH, "create_or_update_sheets")
-        # _refresh_gui_data() é chamado dentro de _run_external_python_script()
 
     def _run_sync_db_db_schema(self):
         """Executa o script para sincronizar o schema db_db com os cabeçalhos reais dos arquivos."""
@@ -921,14 +1055,12 @@ class TeamcenterStyleGUI(QMainWindow):
             QMessageBox.critical(self, "Erro", f"O script de atualização de metadados não foi encontrado em: {UPDATE_METADATA_SCRIPT_PATH}")
             return
         self._run_external_python_script(UPDATE_METADATA_SCRIPT_PATH, "update_db_schema")
-        # _refresh_gui_data() é chamado dentro de _run_external_python_script()
 
     def _run_validate_db_consistency(self):
         """
         Abre a ferramenta DbHeadersUpdaterTool em uma aba para validar a consistência do DB.
-        Não chama _run_external_python_script diretamente para este, pois a ferramenta já gerencia a execução.
         """
-        self._open_tool("MOD000018", refresh_callback=self._refresh_gui_data) # Abre a ferramenta do validador
+        self._open_tool("MOD000018", refresh_callback=self._refresh_gui_data) 
 
 
 # === INÍCIO DO APLICATIVO ===
