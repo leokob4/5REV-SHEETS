@@ -1,3 +1,124 @@
+Adicionar tool(coloquei na pasta app_sheets/tools) que chamaremos de tools_line_generator.py e servirá para promptar o usuário a selecionar o arquivo do novo mod *.py e a planilha selecionada,
+o usuário completando a linha através dos campos de texto no app, e assim adicionando o novo "MOD" na planilha tools.
+me envie o script(coloquei na pasta app_sheets/tools):
+sheet_validator_simple.py
+
+
+mini console
+
+
+compartilhar main.py;
+
+
+(desenvolver tool de admin para adicionar/atualizar mods carregados? garantir que novas tools colocadas na pasta são chamadas?)acho que já é assim
+
+
+__
+
+alterar endereço do sheet_validator para pasta app_sheets/tools, como os outros scripts de admin, também adicionar essas informações na planilha tools.xlsx, por exemplo como MOD000012 em diante, e então ver se não faltou tools baseado nas ui/tools/*.py anteriores:
+segue a planilha tools atual, me mande a nova, que poderemos referenciar os cabeçalhos dinamicamente atraves do GUI:
+
+rodei nosso script de admin update_user_sheets_metadata e esse foi o output, por algum motivo ele não conseguiu ler algumas planilhas, será que eu refaço elas manualmente:?
+____
+para tornar os módulos do app acessíveis atraves da gui, me envie as linhas que devem faltar nessa planilha, considerando os ui/tools/*.py discutidos anteriormente.
+{mod_id;	mod_name;	mod_description;	module_path;	MOD_WORK_TABLE;	MOD_WORK_TABLE_PATH;	mod_comment_old;}
+MOD000001;	Product Data;	Manage product info;	ui/tools/product_data.py;	output.xlsx;	/user_sheets/output.xlsx;	implement an item with parameters like measured unit,WEIGHT, if its made or bought/aquired, it must have format 6 digit number, maybe have parameters like group, supplier, price, last price, description,image, default deposit and storage address...;
+MOD000002;	BOM Manager;	Bill of Materials;	ui/tools/bom_manager.py;	RPI.xlsx;	/user_sheets/RPI.xlsx;	implement a window to create BOM from product data and engineering lists and configure products for commecial order creation screen and product configuration;
+MOD000003;	PRODUCT CONFIG.;	CONFIG-TELA-COMERCIAL;	ui/tools/configurador.py;	configurador.xlsx;	/user_sheets/configurador.xlsx;	implement window that lets user create programmes to integrate BOM with COMERCIAL;
+MOD000004;	RH;	colaboradores-management;	ui/tools/colaboradores.py;	colaboradores.xlsx;	/user_sheets/colaboradores.xlsx;	MANAGE WORK FORCE DATA, IMPLEMENT SCREEN TO MANAGE THAT DATA AND FUCTIONS TO PRINT TEMPLATES NEEDED AKA DOCUMENTS;
+MOD000005;	ENGENHARIA;	criação-item-produto-estrutura;	ui/tools/items.py;	output.xlsx;	/user_sheets/output.xlsx;	ITEM STRUCTURE TREE LIST VIEW FOR COMPONENTS AND MATÉRIA PRIMA, CAD INTEGRATION, DRAWING AND ENGINEERING INFORMATION, MASS, VOLUME;
+MOD000006;	PROCESSO;	roteiro-info-eng-manufatura;	ui/tools/manufacturing.py;	RPI.xlsx;	/user_sheets/RPI.xlsx;	manufacturing process and transportation definition module;
+MOD000007;	PCP;	reserva-de-pedidos;	ui/tools/pcp.py;	programacao.xlsx;	/user_sheets/programacao.xlsx;	production and material aquirement planning module(reservation from estoque);
+MOD000008;	ESTOQUE;	gestao-deposito-inventario;	ui/tools/estoque.py;	estoque.xlsx;	/user_sheets/estoque.xlsx;	Stuff in our deposits and addresses within these places management modul;
+MOD000009;	FINANC;	registrar movimentações;	ui/tools/financeiro.py;	financeiro.xlsx;	/user_sheets/financeiro.xlsx;	money management stuff to contabilize costs from all kinds of groups;
+MOD000010;	COMERCIAL;	adicionar pedido;	ui/tools/pedidos.py;	pedidos.xlsx;	/user_sheets/pedidos.xlsx;	module to generate orders confirmed from customer, document parameters about this here, price, due date etc...;
+MOD000011;	MANUTENÇÃO;	tabela de chamados;	ui/tools/manutencao.py;	manutencao.xlsx;	/user_sheets/manutencao.xlsx;	internal maintenance module to add/solve cases; description is essential here.;
+
+____
+
+sim, essa planilha já existe no local, por favor acho que não funcionará nossos scripts para refletir a parte:
+"Criar/Reinicializar/atualizar planilhas" e "Cria ou reinicializa os arquivos '.xlsx' na pasta 'user_sheets' com as estruturas em db_updated. sem perda de dados das demais linhas>1(linhas maior que 1 do cabeçalho utilizadas no app)
+a intenção é não mais tratar somente o engenharia.xlsx mas todas as planilhas de user_sheets, ao não ser a db.xlsx, também utilizar essa função para confirmar se os cabeçalhos das app_sheets são os originais atualizados.
+Também não pode ter erro que leve a:
+Aviso: Ignorando linha malformada na planilha 'access' (linha 995): [None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None]
+Aviso: Ignorando linha malformada na planilha 'access' (linha 996): [None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None]
+Aviso: Ignorando linha malformada na planilha 'access' (linha 997): [None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None]
+Aviso: Ignorando linha malformada na planilha 'access' (linha 998): [None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None]
+Aviso: Ignorando linha malformada na planilha 'access' (linha 999): [None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None]
+Aviso: Ignorando linha malformada na planilha 'access' (linha 1000): [None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None]
+Aviso: Ignorando linha malformada ou incompleta na planilha 'tools' (linha 13): [None, None, None, None, None, None, None, None]
+Aviso: Ignorando linha malformada ou incompleta na planilha 'tools' (linha 14): [None, None, None, None, None, None, None, None]
+Aviso: Ignorando linha malformada ou incompleta na planilha 'tools' (linha 15): [None, None, None, None, None, None, None, None]
+Aviso: Ignorando linha malformada ou incompleta na planilha 'tools' (linha 16): [None, None, None, None, None, None, None, None]
+Aviso: Ignorando linha malformada ou incompleta na planilha 'tools' (linha 17): [None, None, None, None, None, None, None, None]
+____
+Vamos alterar o local destes dados de acessos usuários de da planilha db.xlsx para as planilhas na pasta app_sheets,
+segue a estrutura das planilhas que vou copiar do local antigo para o novo manualmente:
+users.xlsx(pagina_arquivo=users)
+{id;	username;	password_hash;	role;}
+1;	alice;	$2a$12$K5/wdEGZXbZxavg3WNMWtufUTfzCdBD5qql1iXMAzqg1F9Y2ZvDfS;	admin;
+2;	bob;	$2a$12$K5/wdEGZXbZxavg3WNMWtufUTfzCdBD5qql1iXMAzqg1F9Y2ZvDfS;	designer;
+3;	leo;	$2a$12$K5/wdEGZXbZxavg3WNMWtufUTfzCdBD5qql1iXMAzqg1F9Y2ZvDfS;	admin;
+5;	leo;	$2b$12$iAnMByGmyIGfq2RL/BAysO2dmtT67oOLoNoRxh7Hayuydm5XmajAG;	admin;
+6;	leo2;	$2b$12$PTmaqSSG7e5ZibXY5L8hdeb8OI7n9G5CR2J3BxEuIPI3GkqzN/Qdi;	user;
+6;	2;	$2b$12$ru1DY2/NiyQnI4IBOvXPVOTe1UmVFf9sdgzBABiQQeLXGItLRU1tW;	admin;
+access.xlsx(pagina_arquivo=access)
+{role;	allowed_tools;}
+admin;	all;
+user;	mod1,mo2,mes_pcp;
+engineer;	prod_data,bom_manager,manuf,pcp_tool;
+finance;	financeiro,pedidos;
+stock_manager;	estoque_tool;
+maintenance_crew;	manutencao;
+tools.xlsx(antes,pagina_arquivo=tools)
+{id;	name;	description;	path;	comment;}
+mod1;	Tool One;	Description for Tool One;	path/to/tool1;	Existing tool;
+mod2;	Tool Two;	Description for Tool Two;	path/to/tool2;	Existing tool;
+mod3;	Tool Three;	Description for Tool Three;	path/to/tool3;	Existing tool;
+mod4;	Engenharia (Workflow);	Diagram interface for task workflows and revisions;	path/to/engenharia_tool;	GUI for this already initiated in dashboard.html;
+mes_pcp;	MES (Apontamento Fábrica);	Manufacturing Execution System for shop floor data entry (PCP Module);	path/to/mes_tool;	GUI for this already initiated in dashboard.html;
+prod_data;	Dados do Produto;	Gerenciar dados de produtos;	especificações e documentos;	ui/tools/product_data.py;
+bom_manager;	Gerenciador de BOM;	Criar e gerenciar listas de materiais (BOMs) para produtos;	ui/tools/bom_manager.py;	New tool: Bill of Materials Manager;
+configurador;	Configurador;	Configurar variações de produtos e opções;	ui/tools/configurador.py;	New tool: Product Configurator;
+colab;	Colaboradores;	Gerenciar informações de colaboradores e equipes;	ui/tools/colaboradores.py;	New tool: Employee/Collaborator Management;
+items_tool;	Itens;	Gerenciar itens genéricos no sistema;	ui/tools/items.py;	New tool: Generic Item Management;
+manuf;	Manufatura;	Planejamento e execução de ordens de fabricação;	ui/tools/manufacturing.py;	New tool: Manufacturing Operations;
+pcp_tool;	PCP;	Planejamento e Controle da Produção;	ui/tools/pcp.py;	New tool: Production Planning & Control;
+estoque_tool;	Estoque;	Gerenciar inventário e localização de estoque;	ui/tools/estoque.py;	New tool: Inventory Management;
+financeiro;	Financeiro;	Gerenciar transações financeiras e contabilidade;	ui/tools/financeiro.py;	New tool: Financial Management;
+pedidos;	Pedidos;	Gerenciar pedidos de clientes e fornecedores;	ui/tools/pedidos.py;	New tool: Order Management;
+manutencao;	Manutenção;	Planejar e registrar atividades de manutenção de equipamentos;	ui/tools/manutencao.py;	New tool: Maintenance Management;
+mod_user_settings;	Perfil;	Gerencia as configurações do perfil de usuário;	ui/ools/user_settingss_tool;	/UserSettingsTool;
+tools.xlsx(nova versão definitiva até agora atualizada por mim manualmente,pagina_arquivo=tools)
+{mod_id;	mod_name;	mod_description;	module_path;	MOD_WORK_TABLE;	MOD_WORK_TABLE_PATH;	mod_comment_old;mod_comment_new;}
+MOD000001;	Product Data;	Manage product info;	ui/tools/product_data.py;	output.xlsx;	/user_sheets/output.xlsx;	implement an item with parameters like measured unit,WEIGHT, if its made or bought/aquired, it must have format 6 digit number, maybe have parameters like group, supplier, price, last price, description,image, default deposit and storage address...;	obs01 conferir depois
+MOD000002;	BOM Manager;	Bill of Materials;	ui/tools/bom_manager.py;	RPI.xlsx;	/user_sheets/RPI.xlsx;	implement a window to create BOM from product data and engineering lists and configure products for commecial order creation screen and product configuration;	obs01 conferir depois;
+MOD000003;	PRODUCT CONFIG.;	CONFIG-TELA-COMERCIAL;	ui/tools/configurador.py;	configurador.xlsx;	/user_sheets/configurador.xlsx;	implement window that lets user create programmes to integrate BOM with COMERCIAL;	obs01 conferir depois;
+MOD000004;	RH;	colaboradores-management;	ui/tools/colaboradores.py;	colaboradores.xlsx;	/user_sheets/colaboradores.xlsx;	MANAGE WORK FORCE DATA, IMPLEMENT SCREEN TO MANAGE THAT DATA AND FUCTIONS TO PRINT TEMPLATES NEEDED AKA DOCUMENTS;	obs01 conferir depois;
+MOD000005;	ENGENHARIA;	criação-item-produto-estrutura;	ui/tools/items.py;	output.xlsx;	/user_sheets/output.xlsx;	ITEM STRUCTURE TREE LIST VIEW FOR COMPONENTS AND MATÉRIA PRIMA, CAD INTEGRATION, DRAWING AND ENGINEERING INFORMATION, MASS, VOLUME;	obs01 conferir depois;
+MOD000006;	PROCESSO;	roteiro-info-eng-manufatura;	ui/tools/manufacturing.py;	RPI.xlsx;	/user_sheets/RPI.xlsx;	manufacturing process and transportation definition module;	obs01 conferir depois;
+MOD000007;	PCP;	reserva-de-pedidos;	ui/tools/pcp.py;	programacao.xlsx;	/user_sheets/programacao.xlsx;	production and material aquirement planning module(reservation from estoque);	obs01 conferir depois;
+MOD000008;	ESTOQUE;	gestao-deposito-inventario;	ui/tools/estoque.py;	estoque.xlsx;	/user_sheets/estoque.xlsx;	Stuff in our deposits and addresses within these places management modul;	obs01 conferir depois;
+MOD000009;	FINANC;	registrar movimentações;	ui/tools/financeiro.py;	financeiro.xlsx;	/user_sheets/financeiro.xlsx;	money management stuff to contabilize costs from all kinds of groups;	obs01 conferir depois;
+MOD000010;	COMERCIAL;	adicionar pedido;	ui/tools/pedidos.py;	pedidos.xlsx;	/user_sheets/pedidos.xlsx;	module to generate orders confirmed from customer, document parameters about this here, price, due date etc...;	obs01 conferir depois;
+MOD000011;	MANUTENÇÃO;	tabela de chamados;	ui/tools/manutencao.py;	manutencao.xlsx;	/user_sheets/manutencao.xlsx;	internal maintenance module to add/solve cases; description is essential here.;	obs01 conferir depois;
+Enviando novo gui.py com algumas alterações...
+
+_____
+após atualizarmos todas as linhas do tools.xlsx conforme as ferramentas que eu já enviei o código da pasta ui/tools, poderemos remover traços de dados
+que dependen por exemplo da função: ws_estrutura.append(["ITEM001", "Produto Final A", "A", "Assembly", "N/A", "EA", 10.5, "Approved", "", 0])
+        ws_estrutura.append(["ITEM002", "Sub-Conjunto X", "B", "Sub-Assembly", "Alumínio", "EA", 5.2, "Approved", "ITEM001", 1])
+        ws_estrutura.append(["ITEM003", "Parafuso M6", "C", "Part", "Aço Inox", "EA", 0.05, "Approved", "ITEM002", 2])
+        ws_estrutura.append(["ITEM004", "Componente Y", "A", "Part", "Plástico", "EA", 1.1, "Draft", "ITEM001", 1])
+ou dessa forma para inserir dados das primeiras linhas das planilhas no nosso app, reduzindo o código py provavelmente.
+
+Precisamos atualizar nosso script "Criar/Reinicializar/atualizar planilhas" para fazer o que diz na nova descrição em gui.py;
+Então poderemos atualizar nosso app facilmente quando preciso.
+Preciamos arrumar script do Sincronizar pagina db_db com planilhas das pastas veio com resultado incompleto, que deveria olhar todas as pastas do projeto por planilhas exceto a db.xlsx.
+Agora também poderemos aproveitar o processo para atualizar gui.py.
+____
+nosso trabalho para melhorar o funcionamento da user profile tool não está completo--> depois criar cada tela de cada tool
+
 refatorar este como os outros:
 
 nosso script para atualizar o schema db_db não deve criar 
